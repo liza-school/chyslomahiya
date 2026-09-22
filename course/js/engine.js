@@ -1,12 +1,14 @@
 /* Рушій курсу: маршрути, відмалювання блоків, перевірка завдань, прогрес. */
 
 const COURSE = (function () {
-  const STORE_KEY = "fimli.v1";
+  const STORE_KEY = "chyslomahiya.v1";
+  const OLD_STORE_KEY = "fimli.v1"; // курс звався інакше; прогрес переїжджає сам
   const lessons = [];
 
   let store = { done: {} };
   try {
-    store = Object.assign(store, JSON.parse(localStorage.getItem(STORE_KEY) || "{}"));
+    const saved = localStorage.getItem(STORE_KEY) || localStorage.getItem(OLD_STORE_KEY) || "{}";
+    store = Object.assign(store, JSON.parse(saved));
   } catch (e) {
     /* зіпсоване сховище просто ігноруємо */
   }
@@ -509,7 +511,7 @@ const COURSE = (function () {
       "div",
       { class: "hero" },
       el("div", { class: "crest", text: "⚖️" }),
-      el("div", { class: "kicker", text: "підготовка до ФіМЛі · 6 клас" }),
+      el("div", { class: "kicker", text: "математика у Гоґвортсі · 6 клас" }),
       el("h1", { text: "Математика з чарами" }),
       el("p", {
         class: "lead",

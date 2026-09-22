@@ -31,7 +31,7 @@ if (!chromePath) {
 const chrome = spawn(chromePath, [
   "--headless=new",
   "--remote-debugging-port=" + PORT,
-  "--user-data-dir=" + path.join(os.tmpdir(), "fimli-check-" + Date.now()),
+  "--user-data-dir=" + path.join(os.tmpdir(), "chyslomahiya-check-" + Date.now()),
   "--no-first-run",
   "--disable-gpu",
   "about:blank",
@@ -411,7 +411,7 @@ const LESSONS = ["l01"];
 
   /* ---------- прогрес і верстка ---------- */
 
-  const stored = await evaluate("(() => { try { return localStorage.getItem('fimli.v1') || 'null'; } catch (e) { return 'SecurityError'; } })()");
+  const stored = await evaluate("(() => { try { return localStorage.getItem('chyslomahiya.v1') || 'null'; } catch (e) { return 'SecurityError'; } })()");
   expect("прогрес пишеться в localStorage", stored !== "null" && stored !== "SecurityError", String(stored).slice(0, 70));
 
   const mini = await evaluate("document.getElementById('progressMini').textContent");
