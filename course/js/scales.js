@@ -52,6 +52,16 @@ const SCALES = (function () {
 
     const tableCoins = el("div", { class: "table-coins" });
     const tray = el("div", { class: "tray" }, el("div", { class: "tray-label", text: "Стіл" }), tableCoins);
+
+    /* Полиця для доведено справжніх монет. Вони не зникають — ними далі важать як гирями,
+       але на робочому столі їм не місце: дитина має бачити тільки підозрюваних. */
+    const spareCoins = el("div", { class: "table-coins" });
+    const spare = el(
+      "div",
+      { class: "tray spare" },
+      el("div", { class: "tray-label", text: "Доведено справжні · можна брати як гирі" }),
+      spareCoins
+    );
     const verdict = el("div", { class: "sim-verdict" });
     const log = el("ol", { class: "sim-log" });
     const counter = el("span", { class: "sim-stat" });
@@ -79,10 +89,18 @@ const SCALES = (function () {
     }
 
     function layout() {
+      let spareCount = 0;
       coins.forEach((coin, i) => {
-        const target = zones[i] === "left" ? leftCoins : zones[i] === "right" ? rightCoins : tableCoins;
+        const proven = !candidates.includes(i);
+        if (zones[i] === "table" && proven) spareCount += 1;
+        const target =
+          zones[i] === "left" ? leftCoins
+            : zones[i] === "right" ? rightCoins
+            : proven ? spareCoins
+            : tableCoins;
         if (coin.parentNode !== target) target.append(coin);
       });
+      spare.classList.toggle("empty", spareCount === 0);
       const left = zones.filter((z) => z === "left").length;
       const right = zones.filter((z) => z === "right").length;
       counter.textContent =
@@ -125,6 +143,8 @@ const SCALES = (function () {
       if (hit(leftPan.getBoundingClientRect(), x, y, PAN_PAD)) return "left";
       if (hit(rightPan.getBoundingClientRect(), x, y, PAN_PAD)) return "right";
       if (hit(tray.getBoundingClientRect(), x, y, 10)) return "table";
+      /* Полиця з гирями — теж «стіл»: монета, скинута туди, просто йде з чаші. */
+      if (hit(spare.getBoundingClientRect(), x, y, 10)) return "table";
       return null;
     }
 
@@ -132,6 +152,7 @@ const SCALES = (function () {
       leftArm.classList.toggle("drop-hot", zone === "left");
       rightArm.classList.toggle("drop-hot", zone === "right");
       tray.classList.toggle("drop-hot", zone === "table");
+      spare.classList.toggle("drop-hot", zone === "table");
     }
 
     function onPointerDown(i, coin, event) {
@@ -321,8 +342,11 @@ const SCALES = (function () {
         return;
       }
 
-      /* Вгадала: решта монет доведено справжні, чаші звільняються під наступне зважування. */
-      const keep = pendingAsk === "pans" ? (i) => zones[i] !== "table" : (i) => zones[i] === pendingAsk;
+      /* Вгадала: решта монет доведено справжні, чаші звільняються під наступне зважування.
+         Зону треба запамʼятати ДО скидання pendingAsk: стрілка читала б уже false
+         і не лишала б жодної підозрюваної монети. */
+      const answered = pendingAsk;
+      const keep = answered === "pans" ? (i) => zones[i] !== "table" : (i) => zones[i] === answered;
       pendingAsk = false;
       ask.textContent = "";
       candidates = candidates.filter(keep);
@@ -449,6 +473,7 @@ const SCALES = (function () {
       verdict,
       ask,
       tray,
+      spare,
       el("div", { class: "toolbar" }, weighBtn, declareBtn, clearBtn, resetBtn),
       el("details", { class: "sim-logbox" }, el("summary", { text: "Журнал зважувань" }), log)
     );

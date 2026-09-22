@@ -265,6 +265,38 @@ const LESSONS = ["l01"];
   );
   expect("терези питають, де тепер фальшива, і чекають відповіді", /^3\|true\|true\|[1-9]/.test(asking), asking);
 
+  /* Колись тут гинули всі монети до одної: keep читав pendingAsk уже після скидання у false,
+     тож після правильної відповіді не лишалося жодної підозрюваної і задача ставала нерозвʼязною.
+     9 монет, 3 проти 3: хай який результат, підозрюваних має лишитися рівно 3. */
+  const narrowing = await evaluate(
+    "(async () => { const sim = [...document.querySelectorAll('.sim')][1];" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " sim.querySelectorAll('.ghost-btn')[2].click(); await pause(40);" +
+      " const coins = [...sim.querySelectorAll('.coin')];" +
+      " for (let i = 0; i < 3; i++) coins[i].click();" +
+      " for (let i = 3; i < 6; i++) { coins[i].click(); coins[i].click(); }" +
+      " sim.querySelector('.btn').click(); await pause(60);" +
+      " for (const option of [...sim.querySelectorAll('.ask-opt')]) {" +
+      "   option.click(); await pause(30); if (!sim.querySelector('.ask-opt')) break; }" +
+      " const stat = sim.querySelector('.sim-stat').textContent;" +
+      " const left = stat.split('підозрюваних: ')[1].split(' ')[0];" +
+      " const onTable = sim.querySelectorAll('.tray:not(.spare) .coin').length;" +
+      " const onShelf = sim.querySelectorAll('.tray.spare .coin').length;" +
+      " return left + '|' + onTable + '|' + onShelf; })()"
+  );
+  expect("після відповіді підозрювані не зникають", narrowing === "3|3|6", narrowing);
+
+  /* Доведено справжню монету можна зняти з полиці назад на чашу — вона гиря, а не сміття. */
+  const weightsUsable = await evaluate(
+    "(async () => { const sim = [...document.querySelectorAll('.sim')][1];" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " const spare = sim.querySelector('.tray.spare .coin');" +
+      " if (!spare) return 'полиця порожня';" +
+      " spare.click(); await pause(30);" +
+      " return sim.querySelector('.arm.left .coin') ? 'гиря на чаші' : 'не переїхала'; })()"
+  );
+  expect("гирю з полиці можна повернути на чашу", weightsUsable === "гиря на чаші", weightsUsable);
+
   // Тренажер: будь-яка кількість монет і режим «невідомо».
   const trainerBig = await evaluate(
     "(async () => { const t = document.querySelector('.block.trainer-block');" +
