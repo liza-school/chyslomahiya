@@ -29,6 +29,13 @@ const SCALES = (function () {
     let suppressClick = false;
     let pendingAsk = false;
     let candidates = [];
+    /* Стан кожної монети — це вся памʼять симулятора про міркування дитини:
+       "?"     — може бути фальшивою, і легшою, і важчою (тільки при невідомому напрямі);
+       "heavy" — якщо фальшива, то лише важча;
+       "light" — якщо фальшива, то лише легша;
+       "out"   — доведено справжня.
+       Задача з відомим напрямом — окремий випадок: там усі монети стартують уже з міткою. */
+    let state = new Array(n).fill("?");
     const zones = new Array(n).fill("table");
     const ask = el("div", { class: "ask" });
 
@@ -91,7 +98,12 @@ const SCALES = (function () {
     function layout() {
       let spareCount = 0;
       coins.forEach((coin, i) => {
-        const proven = !candidates.includes(i);
+        const proven = state[i] === "out";
+        coin.classList.toggle("out", proven);
+        /* Значки ↑ і ↓ мають сенс лише там, де напрям невідомий: в інших задачах
+           він однаковий для всіх монет і намальований у самій умові. */
+        coin.classList.toggle("sus-heavy", declared === "unknown" && state[i] === "heavy");
+        coin.classList.toggle("sus-light", declared === "unknown" && state[i] === "light");
         if (zones[i] === "table" && proven) spareCount += 1;
         const target =
           zones[i] === "left" ? leftCoins
@@ -103,9 +115,12 @@ const SCALES = (function () {
       spare.classList.toggle("empty", spareCount === 0);
       const left = zones.filter((z) => z === "left").length;
       const right = zones.filter((z) => z === "right").length;
+      const heavy = state.filter((s) => s === "heavy").length;
+      const light = state.filter((s) => s === "light").length;
+      const marks = declared === "unknown" && heavy + light ? " (↑" + heavy + " ↓" + light + ")" : "";
       counter.textContent =
         "Зважувань: " + used + (limit ? " з " + limit : "") +
-        " · підозрюваних: " + candidates.length +
+        " · підозрюваних: " + candidates.length + marks +
         " · на чашах " + left + " і " + right;
       declareBtn.classList.toggle("hot", Boolean(limit) && used >= limit && !solved);
     }
@@ -293,17 +308,36 @@ const SCALES = (function () {
       left: "На лівій чаші",
       right: "На правій чаші",
       table: "Серед тих, що на столі",
-      pans: "На чашах — поки не знаю, на якій",
+      tilt: "Хто внизу — підозра «важча» ↑, хто вгорі — «легша» ↓",
+      swap: "Хто внизу — «легша» ↓, хто вгорі — «важча» ↑",
+      none: "Усі, хто на чашах, справжні",
     };
 
     /* Оскільки на чашах завжди порівну монет, відповідь однозначно випливає з результату.
-       Виняток — невідомий напрям: тоді обидві чаші лишаються підозрюваними. */
+       При невідомому напрямі нерівновага питається інакше — не «де вона», а «що це означає». */
     function correctZone(outcome) {
       if (outcome === 0) return "table";
-      if (declared === "unknown") return "pans";
       const down = outcome > 0 ? "left" : "right";
       const up = outcome > 0 ? "right" : "left";
       return declared === "heavy" ? down : up;
+    }
+
+    /* Один крок міркування, застосований до кожної монети.
+       Нерівновага: на опущеній чаші фальшива могла б бути тільки важчою, на піднятій —
+       тільки легшою, а на столі її немає взагалі, бо монет на чашах було порівну.
+       Стара мітка перетинається з новою: «тільки важча», що опинилася на піднятій чаші,
+       доведено справжня — саме цей перетин і вирізає монети в класичній схемі 12 за 3.
+       Рівновага: усі, хто на чашах, справжні; тим, хто на столі, нічого не змінилося. */
+    function applyOutcome(outcome) {
+      const down = outcome > 0 ? "left" : "right";
+      state = state.map((s, i) => {
+        if (s === "out") return "out";
+        if (outcome === 0) return zones[i] === "table" ? s : "out";
+        if (zones[i] === "table") return "out";
+        const only = zones[i] === down ? "heavy" : "light";
+        return s === "?" || s === only ? only : "out";
+      });
+      candidates = state.map((s, i) => (s === "out" ? -1 : i)).filter((i) => i >= 0);
     }
 
     /* Питаємо лише тоді, коли є з чого вибирати: підозрювані лежать більш ніж в одному місці. */
@@ -311,11 +345,14 @@ const SCALES = (function () {
       const spread = new Set(candidates.map((i) => zones[i]));
       if (candidates.length < 2 || spread.size < 2) return;
 
-      pendingAsk = correctZone(outcome);
+      const tilted = outcome !== 0 && declared === "unknown";
+      pendingAsk = tilted ? "tilt" : correctZone(outcome);
       ask.textContent = "";
-      ask.append(el("div", { class: "ask-q", text: "Де тепер фальшива?" }));
+      ask.append(
+        el("div", { class: "ask-q", text: tilted ? "Що це означає для монет на чашах?" : "Де тепер фальшива?" })
+      );
       const row = el("div", { class: "ask-opts" });
-      const options = declared === "unknown" ? ["left", "right", "table", "pans"] : ["left", "right", "table"];
+      const options = tilted ? ["tilt", "swap", "none"] : ["left", "right", "table"];
       options.forEach((zone) => {
         const button = el("button", { class: "ask-opt", type: "button", text: ZONE_NAME[zone] });
         button.addEventListener("click", () => answerGroup(zone, button, outcome));
@@ -325,10 +362,10 @@ const SCALES = (function () {
     }
 
     function whyNot(zone, outcome) {
+      if (zone === "swap") return "Ні, навпаки. Чаша опускається від важчого — отже внизу підозра «важча», а вгорі «легша».";
+      if (zone === "none") return "Ні. Монет на чашах було порівну, а рівноваги немає — отже фальшива саме там.";
       if (outcome === 0) return "Ні. Чаші зрівноважилися — отже монети на них однакові, тобто справжні.";
       if (zone === "table") return "Ні. Монет на чашах було порівну, а рівноваги немає — різниця саме на чашах.";
-      if (declared === "unknown")
-        return "Ні. Ти ж не знаєш, легша фальшива чи важча: опуститися міг будь-який бік. Поки підозрювані обидві чаші.";
       const shouldGo = declared === "heavy" ? "опуститися" : "піднятися";
       return "Ні. Фальшива " + (declared === "heavy" ? "важча" : "легша") + ", отже її чаша мала " + shouldGo + ".";
     }
@@ -342,26 +379,27 @@ const SCALES = (function () {
         return;
       }
 
-      /* Вгадала: решта монет доведено справжні, чаші звільняються під наступне зважування.
-         Зону треба запамʼятати ДО скидання pendingAsk: стрілка читала б уже false
-         і не лишала б жодної підозрюваної монети. */
-      const answered = pendingAsk;
-      const keep = answered === "pans" ? (i) => zones[i] !== "table" : (i) => zones[i] === answered;
+      /* Вгадала: застосовуємо крок міркування й звільняємо чаші під наступне зважування.
+         Доведено справжні монети лишаються в грі — саме ними далі зручно важити як гирями. */
       pendingAsk = false;
       ask.textContent = "";
-      candidates = candidates.filter(keep);
-      /* Доведено справжні монети лишаються в грі — саме ними далі зручно важити як гирями. */
-      coins.forEach((coin, i) => {
-        if (!candidates.includes(i)) coin.classList.add("out");
-      });
+      applyOutcome(outcome);
       zones.fill("table");
       setTilt(0);
       layout();
       verdict.className = "sim-verdict ok";
       verdict.textContent =
         candidates.length === 1
-          ? "Так. Лишилася одна підозрювана монета — тисни «Назвати фальшиву»."
-          : "Так. Підозрюваних лишилося " + candidates.length + ". Решта доведено справжні.";
+          ? "Так. Лишилася одна підозрювана монета — № " + (candidates[0] + 1) + ". Тисни «Назвати фальшиву»."
+          : "Так. Підозрюваних лишилося " + candidates.length + suspectList() + ". Решта доведено справжні.";
+    }
+
+    /* При невідомому напрямі важливо не тільки скільки монет лишилося, а й з якою міткою:
+       саме цей список дитина тримає на папері, і він має збігатися з екраном. */
+    function suspectList() {
+      if (declared !== "unknown") return "";
+      const named = candidates.map((i) => "№" + (i + 1) + (state[i] === "heavy" ? " ↑" : state[i] === "light" ? " ↓" : ""));
+      return ": " + named.join(", ");
     }
 
     /* ---------- рішення ---------- */
@@ -379,7 +417,7 @@ const SCALES = (function () {
     /* Режим вимикається лише тоді, коли монету вгадано. Після промаху він лишається ввімкненим,
        щоб можна було одразу тицьнути іншу монету, а не тиснути кнопку щоразу. */
     function declare(i) {
-      if (coins[i].classList.contains("out")) {
+      if (state[i] === "out") {
         verdict.className = "sim-verdict no";
         verdict.textContent = "Монета № " + (i + 1) + " вже доведено справжня — ти сама її виключила. Обери іншу.";
         return;
@@ -411,10 +449,13 @@ const SCALES = (function () {
       drag = null;
       pendingAsk = false;
       candidates = coins.map((_, i) => i);
+      /* У задачі з відомим напрямом підозра в усіх однакова з самого початку —
+         тоді перетин робить рівно те саме, що робив старий зонний фільтр. */
+      state = new Array(n).fill(declared === "unknown" ? "?" : declared);
       ask.textContent = "";
       zones.fill("table");
       coins.forEach((coin) => {
-        coin.classList.remove("fake", "cleared", "dragging", "out");
+        coin.classList.remove("fake", "cleared", "dragging", "out", "sus-heavy", "sus-light");
         coin.disabled = false;
       });
       log.textContent = "";

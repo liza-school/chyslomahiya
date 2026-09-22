@@ -382,3 +382,36 @@
 .tray.spare .coin.out { opacity: .5; }
 
 .tray.spare.empty { display: none; }
+
+/* Значок треба до чогось причепити, а сама монета не позиціонована. */
+.coin.sus-heavy,
+.coin.sus-light { position: relative; }
+
+/* Підозра з напрямком: значок росте з самої монети, щоб дитина бачила
+   не просто «підозрювана», а «підозрювана лише важча / лише легша». */
+.coin.sus-heavy::after,
+.coin.sus-light::after {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  font-weight: 700;
+  border: 1px solid rgba(0,0,0,.4);
+}
+
+.coin.sus-heavy::after {
+  content: "↑";
+  background: #c9862f;
+  color: #21160a;
+}
+
+.coin.sus-light::after {
+  content: "↓";
+  background: #6fa8c9;
+  color: #08161d;
+}

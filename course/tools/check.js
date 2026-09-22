@@ -297,6 +297,72 @@ const LESSONS = ["l01"];
   );
   expect("гирю з полиці можна повернути на чашу", weightsUsable === "гиря на чаші", weightsUsable);
 
+  /* Класика теми: 12 монет, невідомо в який бік. Перше зважування 1-4 проти 5-8 роздає
+     мітки «тільки важча» / «тільки легша», друге переставляє монети між чашами (1,2,5 проти 3,4,6),
+     і правильна відповідь виходить лише перетином старої мітки з новим нахилом.
+     Саме цей перетин тут і перевіряється — на всіх гілках, які можуть випасти. */
+  const classic = await evaluate(
+    "(async () => { const t = document.querySelector('.block.trainer-block');" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " const num = t.querySelector('.trainer-num'); num.value = '12';" +
+      " num.dispatchEvent(new Event('change'));" +
+      " [...t.querySelectorAll('.kind-btn')].find(b => b.textContent === 'невідомо').click();" +
+      " t.querySelector('.btn').click(); await pause(180);" +
+      " const sim = t.querySelector('.sim');" +
+      " const byNum = (k) => [...sim.querySelectorAll('.coin')].find(c => c.textContent === String(k));" +
+      " const put = async (nums, times) => { for (const k of nums) { for (let j = 0; j < times; j++) { byNum(k).click(); await pause(8); } } };" +
+      " const answer = async () => { for (const o of [...sim.querySelectorAll('.ask-opt')]) { o.click(); await pause(30);" +
+      "   if (!sim.querySelector('.ask-opt')) return true; } return false; };" +
+      " await put([1,2,3,4], 1); await put([5,6,7,8], 2);" +
+      " sim.querySelector('.btn').click(); await pause(70);" +
+      " const out1 = sim.querySelector('.sim-verdict').textContent;" +
+      " await answer(); const said1 = sim.querySelector('.sim-verdict').textContent;" +
+      " if (out1.includes('рівновага')) { await put([9,10], 1); await put([11,12], 2); }" +
+      " else { await put([1,2,5], 1); await put([3,4,6], 2); }" +
+      " sim.querySelector('.btn').click(); await pause(70);" +
+      " const out2 = sim.querySelector('.sim-verdict').textContent;" +
+      " await answer(); const said2 = sim.querySelector('.sim-verdict').textContent;" +
+      " return JSON.stringify({ out1, said1, out2, said2 }); })()"
+  );
+
+  const played = JSON.parse(classic);
+  const tiltOf = (text) =>
+    text.includes("рівновага") ? "рівно" : text.includes("ліва чаша опустилася") ? "ліва" : "права";
+  const suspectsOf = (text) => {
+    const at = text.indexOf(": ");
+    const end = text.indexOf(". Решта");
+    return at < 0 || end < 0 ? text.trim() : text.slice(at + 2, end);
+  };
+  const AFTER_FIRST = {
+    ліва: "№1 ↑, №2 ↑, №3 ↑, №4 ↑, №5 ↓, №6 ↓, №7 ↓, №8 ↓",
+    права: "№1 ↓, №2 ↓, №3 ↓, №4 ↓, №5 ↑, №6 ↑, №7 ↑, №8 ↑",
+    рівно: "№9, №10, №11, №12",
+  };
+  const AFTER_SECOND = {
+    "ліва/ліва": "№1 ↑, №2 ↑, №6 ↓",
+    "ліва/права": "№3 ↑, №4 ↑, №5 ↓",
+    "ліва/рівно": "№7 ↓, №8 ↓",
+    "права/ліва": "№3 ↓, №4 ↓, №5 ↑",
+    "права/права": "№1 ↓, №2 ↓, №6 ↑",
+    "права/рівно": "№7 ↑, №8 ↑",
+    "рівно/ліва": "№9 ↑, №10 ↑, №11 ↓, №12 ↓",
+    "рівно/права": "№9 ↓, №10 ↓, №11 ↑, №12 ↑",
+  };
+  const first = tiltOf(played.out1);
+  const second = tiltOf(played.out2);
+  const gotFirst = suspectsOf(played.said1);
+  const gotSecond = suspectsOf(played.said2);
+  expect(
+    "мітки ↑↓ роздані правильно (" + first + ")",
+    gotFirst === AFTER_FIRST[first],
+    gotFirst + (gotFirst === AFTER_FIRST[first] ? "" : " ≠ " + AFTER_FIRST[first])
+  );
+  expect(
+    "перехресне зважування вирізає монети правильно (" + first + "/" + second + ")",
+    gotSecond === AFTER_SECOND[first + "/" + second],
+    gotSecond + (gotSecond === AFTER_SECOND[first + "/" + second] ? "" : " ≠ " + AFTER_SECOND[first + "/" + second])
+  );
+
   // Тренажер: будь-яка кількість монет і режим «невідомо».
   const trainerBig = await evaluate(
     "(async () => { const t = document.querySelector('.block.trainer-block');" +
@@ -323,12 +389,12 @@ const LESSONS = ["l01"];
       " sim.querySelector('.btn').click(); await pause(60);" +
       " const balanced = sim.querySelector('.sim-verdict').textContent.includes('рівновага');" +
       " const labels = [...sim.querySelectorAll('.ask-opt')].map(o => o.textContent);" +
-      " const want = balanced ? 'Серед тих, що на столі' : 'На чашах — поки не знаю, на якій';" +
+      " const want = balanced ? 'Серед тих, що на столі' : 'Хто внизу — підозра «важча» ↑, хто вгорі — «легша» ↓';" +
       " const button = [...sim.querySelectorAll('.ask-opt')].find(o => o.textContent === want);" +
       " button.click(); await pause(40);" +
       " return labels.length + '|' + (sim.querySelector('.ask-opt') ? 'лишилось' : 'прийнято'); })()"
   );
-  expect("у режимі «невідомо» приймається відповідь «на чашах»", unknownAsk === "4|прийнято", unknownAsk);
+  expect("у режимі «невідомо» нерівновага питає про напрям підозри", unknownAsk === "3|прийнято", unknownAsk);
 
   // Другий симулятор — девʼять монет із лімітом на два зважування.
   const limited = await evaluate(
