@@ -1,0 +1,362 @@
+/* Терези Ґрінґотса: латунь, мотузки, золоті ґалеони. */
+
+.block.scales-block, .block.trainer-block {
+  background: linear-gradient(150deg, #241d3d, #12102a);
+  border: 1px solid var(--gold-dim);
+  color: var(--cream);
+}
+
+.block.scales-block .block-head, .block.trainer-block .block-head { border-bottom-color: rgba(217,164,65,.28); }
+.block.scales-block .tag, .block.trainer-block .tag { background: rgba(217,164,65,.2); color: var(--gold-hi); }
+
+/* ---------- тренажер ---------- */
+
+.trainer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--gold-dim);
+  border-radius: 12px;
+  background: rgba(0,0,0,.24);
+}
+
+.trainer-field { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--gold); }
+
+.trainer-num {
+  font: inherit;
+  width: 76px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(255,255,255,.07);
+  color: var(--cream);
+}
+
+.trainer-range { flex: 1 1 180px; min-width: 150px; accent-color: var(--gold); }
+
+.trainer-kinds { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.kind-btn {
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 7px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--gold-dim);
+  background: transparent;
+  color: var(--gold-hi);
+}
+
+.kind-btn:hover { background: rgba(217,164,65,.16); }
+.kind-btn.on { background: var(--gold); color: #2b2118; border-color: var(--gold); }
+
+.trainer-goal {
+  margin: 10px 2px 0;
+  font-size: 15px;
+  color: #ddd0b6;
+}
+
+.trainer-goal b { color: var(--gold-hi); }
+
+/* Панель симулятора — завжди темна, навіть усередині пергаментної задачі. */
+.sim {
+  --beamw: 320px;
+  background: linear-gradient(160deg, #1d1836, #100e22);
+  border: 1px solid var(--gold-dim);
+  border-radius: 12px;
+  padding: 14px;
+  margin: 14px 0;
+  color: var(--cream);
+  box-shadow: inset 0 0 40px rgba(0,0,0,.5);
+}
+
+.sim-task { font-size: 15px; margin-bottom: 4px; }
+.sim-task b { color: var(--gold-hi); }
+
+.sim-hint { font-size: 13px; color: rgba(239,228,207,.6); margin-bottom: 6px; }
+
+.sim-head { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
+.sim-stat { font-size: 13px; color: var(--gold); letter-spacing: .3px; }
+
+/* ---------- самі терези ---------- */
+
+.scales {
+  position: relative;
+  height: 210px;
+  margin: 6px 0 4px;
+}
+
+.base {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 140px;
+  height: 12px;
+  margin-left: -70px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold-dim));
+  box-shadow: 0 6px 18px rgba(0,0,0,.6);
+}
+
+.pillar {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 10px;
+  height: 172px;
+  margin-left: -5px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold-hi) 45%, var(--gold-dim));
+}
+
+.beam-wrap {
+  position: absolute;
+  left: 50%;
+  top: 22px;
+  transform: translateX(-50%);
+}
+
+.beam {
+  position: relative;
+  width: var(--beamw);
+  height: 10px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold-dim));
+  box-shadow: 0 0 18px rgba(217,164,65,.45);
+  transform: rotate(var(--tilt, 0deg));
+  transform-origin: 50% 50%;
+  transition: transform .7s cubic-bezier(.34, 1.3, .5, 1);
+}
+
+/* Вісь посередині коромисла */
+.beam::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, var(--gold-dim));
+}
+
+.arm {
+  position: absolute;
+  top: 6px;
+  width: 124px;
+  margin-left: -62px;
+  transform: rotate(calc(-1 * var(--tilt, 0deg)));
+  transform-origin: 50% 0;
+  transition: transform .7s cubic-bezier(.34, 1.3, .5, 1);
+}
+
+.arm.left { left: 14px; }
+.arm.right { left: calc(var(--beamw) - 14px); }
+
+.rope {
+  width: 2px;
+  height: 54px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, rgba(217,164,65,.8), rgba(217,164,65,.35));
+}
+
+.pan {
+  position: relative;
+  height: 14px;
+  border-radius: 0 0 70px 70px / 0 0 30px 30px;
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold-dim));
+  box-shadow: 0 4px 14px rgba(0,0,0,.5);
+}
+
+.pan-coins {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 9px;
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* ---------- монети ---------- */
+
+.coin {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid #8a6a2a;
+  background: radial-gradient(circle at 34% 28%, #ffeeb4, #d9a441 56%, #91691f);
+  color: #4a3410;
+  font: 600 14px/1 Georgia, serif;
+  cursor: grab;
+  padding: 0;
+  touch-action: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,.55), inset 0 0 0 2px rgba(255,255,255,.22);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.coin:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(217,164,65,.5), inset 0 0 0 2px rgba(255,255,255,.3); }
+.coin:active { cursor: grabbing; }
+
+/* Монета, яку зараз тягнуть: оригінал блідне, під курсором летить копія. */
+.coin.dragging { opacity: .22; }
+
+.coin.drag-ghost {
+  position: fixed;
+  z-index: 9999;
+  width: 38px;
+  height: 38px;
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 1;
+  transform: scale(1.15);
+  box-shadow: 0 12px 26px rgba(0,0,0,.65), inset 0 0 0 2px rgba(255,255,255,.3);
+}
+
+/* Куди зараз впаде монета */
+.arm.drop-hot .pan {
+  box-shadow: 0 0 0 3px var(--gold-hi), 0 6px 18px rgba(217,164,65,.55);
+}
+
+.tray.drop-hot {
+  border-color: var(--gold-hi);
+  border-style: solid;
+  background: rgba(217,164,65,.12);
+}
+
+/* Режим «назви фальшиву»: монети просяться, щоб по них клацнули. */
+.sim.declaring .coin { cursor: pointer; animation: pick-pulse 1.1s ease-in-out infinite; }
+
+@keyframes pick-pulse {
+  0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,.55), 0 0 0 0 rgba(244,207,128,.75); }
+  50%      { box-shadow: 0 2px 6px rgba(0,0,0,.55), 0 0 0 7px rgba(244,207,128,0); }
+}
+
+.pan-coins .coin {
+  width: 21px;
+  height: 21px;
+  font-size: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.25);
+}
+
+/* Багато монет — дрібнішими, щоб сотня влізла на стіл. Але не менше за 34 px:
+   нижче цього дитина на планшеті просто не влучає пальцем. */
+.sim.many .table-coins .coin { width: 34px; height: 34px; font-size: 12px; }
+.sim.many .pan-coins .coin { width: 17px; height: 17px; font-size: 9px; }
+.sim.many .table-coins { gap: 5px; }
+
+.coin.fake {
+  background: radial-gradient(circle at 34% 28%, #d8f9cf, #46b35c 56%, #1f5132);
+  color: #05300f;
+  border-color: #1f5132;
+  box-shadow: 0 0 18px rgba(70,179,92,.85);
+}
+
+.coin.cleared {
+  background: radial-gradient(circle at 34% 28%, #ffd2cd, #c04a3a 56%, #7a2018);
+  color: #fff;
+}
+
+/* Доведено справжня: лежить на столі й більше не грає. */
+.coin.out {
+  opacity: .34;
+  cursor: default;
+  filter: grayscale(.7);
+  box-shadow: none;
+}
+
+.coin.out:hover { transform: none; box-shadow: none; }
+
+/* ---------- питання після зважування ---------- */
+
+.ask {
+  margin: 8px 0;
+}
+
+.ask:empty { display: none; }
+
+.ask-q {
+  font-family: var(--serif);
+  font-size: 17px;
+  color: var(--gold-hi);
+  margin-bottom: 8px;
+}
+
+.ask-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.ask-opt {
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(217,164,65,.1);
+  color: var(--gold-hi);
+}
+
+.ask-opt:hover { background: rgba(217,164,65,.22); border-color: var(--gold-hi); }
+.ask-opt.wrong { border-color: #c04a3a; background: rgba(192,74,58,.2); color: #f3a39a; }
+
+/* ---------- стіл ---------- */
+
+.tray {
+  border: 1px dashed rgba(217,164,65,.45);
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 6px;
+  background: rgba(0,0,0,.2);
+}
+
+.tray-label {
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--gold);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.table-coins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-height: 38px;
+}
+
+/* ---------- вердикт і журнал ---------- */
+
+.sim-verdict {
+  min-height: 1.4em;
+  font-size: 15px;
+  margin: 4px 0 8px;
+  color: var(--cream);
+}
+
+.sim-verdict.ok { color: #7fe39a; font-weight: 600; }
+.sim-verdict.no { color: #f3a39a; }
+
+.sim .toolbar { margin-top: 12px; }
+
+/* Панель симулятора темна навіть на пергаментній картці задачі, тож її кнопки
+   мусять бити пергаментні правила з app.css за специфічністю. */
+.block .sim .toolbar .ghost-btn { color: var(--gold-hi); border-color: var(--gold-dim); }
+.block .sim .toolbar .ghost-btn:hover { background: rgba(217,164,65,.16); }
+.block .sim .toolbar .ghost-btn.armed { background: var(--gold); color: #2b2118; border-color: var(--gold); }
+
+.sim-logbox { border-color: rgba(217,164,65,.4); margin-top: 12px; }
+.block .sim details summary { color: var(--gold-hi); }
+.sim-log { margin: 6px 0 0; padding-left: 22px; font-size: 14px; color: #ddd0b6; }
+.sim-log li { padding: 2px 0; }
+.sim-log b { color: var(--gold-hi); font-weight: 600; }
+
+@media (max-width: 520px) {
+  .sim { --beamw: 224px; }
+  .scales { height: 196px; }
+  .arm { width: 96px; margin-left: -48px; }
+  .coin { width: 32px; height: 32px; font-size: 13px; }
+}

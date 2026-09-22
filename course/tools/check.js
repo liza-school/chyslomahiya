@@ -1,0 +1,503 @@
+// Наскрізна перевірка курсу у справжньому Chrome через DevTools Protocol.
+//
+//   node tools/check.js                      (відкриє index.html через file://)
+//   node tools/check.js http://127.0.0.1:8000/
+//
+// Перевіряє: сторінки малюються, усі типи завдань зараховуються, терези зважують
+// і знаходять фальшиву монету, прогрес пишеться в localStorage, у консолі чисто.
+const { spawn } = require("child_process");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+
+const PORT = 9336;
+const TARGET = process.argv[2] || "file:///" + path.resolve(__dirname, "..", "index.html").replace(/\\/g, "/");
+
+const CHROME_CANDIDATES = [
+  process.env.CHROME_PATH,
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+  "/usr/bin/google-chrome",
+].filter(Boolean);
+
+const chromePath = CHROME_CANDIDATES.find((candidate) => fs.existsSync(candidate));
+if (!chromePath) {
+  console.error("Chrome не знайдено. Вкажи шлях у змінній CHROME_PATH.");
+  process.exit(1);
+}
+
+const chrome = spawn(chromePath, [
+  "--headless=new",
+  "--remote-debugging-port=" + PORT,
+  "--user-data-dir=" + path.join(os.tmpdir(), "fimli-check-" + Date.now()),
+  "--no-first-run",
+  "--disable-gpu",
+  "about:blank",
+]);
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const failures = [];
+
+function expect(name, condition, detail) {
+  console.log((condition ? "  ok    " : "  ПРОВАЛ") + "  " + name + (detail ? "  " + detail : ""));
+  if (!condition) failures.push(name + " " + (detail || ""));
+}
+
+async function browserWs() {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    try {
+      const response = await fetch("http://127.0.0.1:" + PORT + "/json/version");
+      return (await response.json()).webSocketDebuggerUrl;
+    } catch (e) {
+      await sleep(250);
+    }
+  }
+  throw new Error("Chrome не піднявся");
+}
+
+function connect(url) {
+  const ws = new WebSocket(url);
+  const waiting = new Map();
+  const events = [];
+  let seq = 0;
+  ws.addEventListener("message", (event) => {
+    const message = JSON.parse(event.data);
+    if (message.id && waiting.has(message.id)) {
+      const slot = waiting.get(message.id);
+      waiting.delete(message.id);
+      message.error ? slot.reject(new Error(JSON.stringify(message.error))) : slot.resolve(message.result);
+    } else if (message.method) {
+      events.push(message);
+    }
+  });
+  const open = new Promise((resolve, reject) => {
+    ws.addEventListener("open", resolve);
+    ws.addEventListener("error", reject);
+  });
+  const send = (method, params, sessionId) =>
+    new Promise((resolve, reject) => {
+      const id = ++seq;
+      waiting.set(id, { resolve, reject });
+      ws.send(JSON.stringify({ id, method, params: params || {}, sessionId }));
+    });
+  return { send, open, events };
+}
+
+const LESSONS = ["l01"];
+
+(async () => {
+  const cdp = connect(await browserWs());
+  await cdp.open;
+  const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" });
+  const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
+  const call = (method, params) => cdp.send(method, params, sessionId);
+
+  await call("Runtime.enable");
+  await call("Log.enable");
+  await call("Page.enable");
+  await call("Page.navigate", { url: TARGET });
+  await sleep(1500);
+
+  const evaluate = async (expression) => {
+    const result = await call("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
+    if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails.exception));
+    return result.result.value;
+  };
+
+  const go = (hash) =>
+    evaluate(
+      "(async () => { location.hash = '" + hash + "'; await new Promise(r => setTimeout(r, 300)); return document.querySelectorAll('.block').length; })()"
+    );
+
+  /* ---------- сторінки ---------- */
+
+  const cards = await evaluate("document.querySelectorAll('.card').length");
+  expect("головна намалювалась", cards === LESSONS.length, "карток: " + cards);
+
+  for (const id of LESSONS) {
+    const blocks = await go("#/l/" + id);
+    expect("сторінка " + id + " намалювалась", blocks > 15, "блоків: " + blocks);
+  }
+
+  /* ---------- будова заняття ---------- */
+
+  for (const id of LESSONS) {
+    await go("#/l/" + id);
+    const shape = await evaluate(
+      "['spell','trap','idea','life','game','summary'].map(k => document.querySelectorAll('.block.' + k).length).join('/')"
+    );
+    expect("у " + id + " є заклинання, пастка, ідея, з життя, з гри, підсумок", !shape.split("/").includes("0"), shape);
+
+    const problems = await evaluate("document.querySelectorAll('.block.problem').length");
+    expect("у " + id + " є задачі", problems >= 5, "задач: " + problems);
+
+    const solutions = await evaluate(
+      "[...document.querySelectorAll('.block.problem')].filter(p => [...p.querySelectorAll('details summary')].some(s => s.textContent.includes('Розв'))).length"
+    );
+    expect("кожна задача в " + id + " має розвʼязання", solutions === problems, solutions + " з " + problems);
+
+    const sims = await evaluate("document.querySelectorAll('.sim').length");
+    expect("у " + id + " є інтерактивні терези", sims >= 3, "симуляторів: " + sims);
+  }
+
+  /* ---------- обовʼязковий зміст ---------- */
+
+  const coverage = JSON.parse(fs.readFileSync(path.join(__dirname, "coverage.json"), "utf8"));
+  for (const id of Object.keys(coverage).filter((key) => !key.startsWith("_"))) {
+    await go("#/l/" + id);
+    const text = String(await evaluate("document.getElementById('app').textContent")).toLowerCase();
+    const missing = coverage[id].filter((needle) => !text.includes(needle));
+    expect("у " + id + " присутній увесь обовʼязковий зміст", missing.length === 0, missing.join(", "));
+  }
+
+  /* ---------- терези ---------- */
+
+  await go("#/l/l01");
+
+  const weighing = await evaluate(
+    "(async () => { const sim = document.querySelector('.block.scales-block .sim');" +
+      " const coins = [...sim.querySelectorAll('.coin')];" +
+      " coins[0].click(); coins[1].click(); coins[1].click();" +
+      " await new Promise(r => setTimeout(r, 30));" +
+      " const left = sim.querySelectorAll('.arm.left .coin').length;" +
+      " const right = sim.querySelectorAll('.arm.right .coin').length;" +
+      " sim.querySelector('.btn').click(); await new Promise(r => setTimeout(r, 60));" +
+      " return left + '/' + right + '|' + sim.querySelector('.sim-verdict').textContent; })()"
+  );
+  expect("монети лягають на чаші, терези відповідають", /^1\/1\|Результат: /.test(weighing), weighing);
+
+  // Перетягування справжньою мишею: натиснути на монеті, протягнути до чаші, відпустити.
+  await evaluate(
+    "(async () => { const sim = document.querySelector('.block.scales-block .sim');" +
+      " sim.querySelectorAll('.ghost-btn')[2].click(); sim.scrollIntoView({ block: 'center' });" +
+      " await new Promise(r => setTimeout(r, 250)); })()"
+  );
+  const spots = JSON.parse(
+    await evaluate(
+      "(() => { const sim = document.querySelector('.block.scales-block .sim');" +
+        " const c = sim.querySelector('.coin').getBoundingClientRect();" +
+        " const p = sim.querySelector('.arm.left .pan').getBoundingClientRect();" +
+        " return JSON.stringify({ cx: c.left + c.width / 2, cy: c.top + c.height / 2," +
+        "   px: p.left + p.width / 2, py: p.top + p.height / 2 }); })()"
+    )
+  );
+  await call("Input.dispatchMouseEvent", { type: "mousePressed", x: spots.cx, y: spots.cy, button: "left", buttons: 1, clickCount: 1 });
+  for (let step = 1; step <= 6; step++) {
+    await call("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: spots.cx + ((spots.px - spots.cx) * step) / 6,
+      y: spots.cy + ((spots.py - spots.cy) * step) / 6,
+      button: "left",
+      buttons: 1,
+    });
+  }
+  await call("Input.dispatchMouseEvent", { type: "mouseReleased", x: spots.px, y: spots.py, button: "left", buttons: 0, clickCount: 1 });
+  await sleep(150);
+  const dragged = await evaluate(
+    "(() => { const sim = document.querySelector('.block.scales-block .sim');" +
+      " return (sim.querySelector('.arm.left .coin') ? 'на лівій чаші' : 'не доїхала')" +
+      "   + '|' + document.querySelectorAll('.drag-ghost').length" +
+      "   + '|' + sim.querySelectorAll('.coin.dragging').length; })()"
+  );
+  expect("монету можна перетягнути мишкою на чашу", dragged === "на лівій чаші|0|0", dragged);
+
+  // Нерівна кількість монет на чашах нічого не доводить — зважування має бути відхилене.
+  const uneven = await evaluate(
+    "(async () => { const sim = document.querySelector('.block.scales-block .sim');" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " sim.querySelectorAll('.ghost-btn')[2].click(); await pause(30);" +
+      " sim.querySelector('.coin').click();" +
+      " sim.querySelector('.btn').click(); await pause(40);" +
+      " return sim.querySelector('.sim-verdict').textContent; })()"
+  );
+  expect("нерівна кількість монет на чашах не приймається", uneven.includes("порівну"), uneven.slice(0, 60));
+
+  // Три монети, одна важча: 1 проти 2, а якщо там рівновага — третя проти першої. Нахил гарантовано.
+  const tilt = await evaluate(
+    "(async () => { const sim = document.querySelector('.block.scales-block .sim');" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " sim.querySelectorAll('.ghost-btn')[2].click(); await pause(30);" +
+      " let coins = [...sim.querySelectorAll('.coin')];" +
+      " coins[0].click(); coins[1].click(); coins[1].click();" +
+      " sim.querySelector('.btn').click(); await pause(60);" +
+      " if (sim.querySelector('.sim-verdict').textContent.includes('рівновага')) {" +
+      "   for (const option of [...sim.querySelectorAll('.ask-opt')]) {" +
+      "     option.click(); await pause(20); if (!sim.querySelector('.ask-opt')) break; }" +
+      "   coins = [...sim.querySelectorAll('.coin')];" +
+      "   coins[2].click(); coins[0].click(); coins[0].click();" +
+      "   sim.querySelector('.btn').click(); await pause(60); }" +
+      " return getComputedStyle(sim.querySelector('.beam')).transform; })()"
+  );
+  expect("коромисло справді нахиляється", tilt !== "none" && tilt !== "matrix(1, 0, 0, 1, 0, 0)", tilt);
+
+  // Режим «назвати фальшиву» вмикається один раз: після промаху він має лишатися ввімкненим.
+  const solving = await evaluate(
+    "(async () => { const sim = document.querySelector('.block.scales-block .sim');" +
+      " const arm = sim.querySelectorAll('.ghost-btn')[0];" +
+      " arm.click(); await new Promise(r => setTimeout(r, 20));" +
+      " for (const coin of [...sim.querySelectorAll('.coin')]) {" +
+      "   coin.click(); await new Promise(r => setTimeout(r, 30));" +
+      "   if (sim.querySelector('.sim-verdict').classList.contains('ok')) break; }" +
+      " const block = sim.closest('.block');" +
+      " return sim.querySelector('.sim-verdict').className + '|' + block.querySelector('.done-mark').textContent; })()"
+  );
+  expect("знайдена фальшива монета зараховується", solving === "sim-verdict ok|✓", solving);
+
+  // Після зважування терези мають спитати, де тепер фальшива, і не пускати далі без відповіді.
+  const asking = await evaluate(
+    "(async () => { const sim = [...document.querySelectorAll('.sim')][1];" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " sim.querySelectorAll('.ghost-btn')[2].click(); await pause(30);" +
+      " const coins = [...sim.querySelectorAll('.coin')];" +
+      " for (let i = 0; i < 3; i++) coins[i].click();" +
+      " for (let i = 3; i < 6; i++) { coins[i].click(); coins[i].click(); }" +
+      " sim.querySelector('.btn').click(); await pause(60);" +
+      " const opts = sim.querySelectorAll('.ask-opt').length;" +
+      " sim.querySelector('.btn').click(); await pause(30);" +
+      " const blocked = sim.querySelector('.sim-verdict').textContent.includes('Спершу скажи');" +
+      " let cleared = false;" +
+      " for (const option of [...sim.querySelectorAll('.ask-opt')]) {" +
+      "   option.click(); await pause(20);" +
+      "   if (!sim.querySelector('.ask-opt')) { cleared = true; break; } }" +
+      " return opts + '|' + blocked + '|' + cleared + '|' + sim.querySelectorAll('.coin.out').length; })()"
+  );
+  expect("терези питають, де тепер фальшива, і чекають відповіді", /^3\|true\|true\|[1-9]/.test(asking), asking);
+
+  // Тренажер: будь-яка кількість монет і режим «невідомо».
+  const trainerBig = await evaluate(
+    "(async () => { const t = document.querySelector('.block.trainer-block');" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " const num = t.querySelector('.trainer-num'); num.value = '100';" +
+      " num.dispatchEvent(new Event('change'));" +
+      " [...t.querySelectorAll('.kind-btn')].find(b => b.textContent === 'невідомо').click();" +
+      " t.querySelector('.btn').click(); await pause(150);" +
+      " const sim = t.querySelector('.sim');" +
+      " return sim.querySelectorAll('.coin').length + '|' + sim.classList.contains('many')" +
+      "   + '|' + t.querySelector('.trainer-goal').textContent.trim().slice(0, 21); })()"
+  );
+  expect("тренажер бере 100 монет і рахує межу для невідомого напряму", trainerBig === "100|true|Вистачить 5 зважувань", trainerBig);
+
+  // У режимі «невідомо» після нерівноваги чесна відповідь — «на чашах, поки не знаю, на якій».
+  const unknownAsk = await evaluate(
+    "(async () => { const t = document.querySelector('.block.trainer-block');" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " const num = t.querySelector('.trainer-num'); num.value = '4';" +
+      " num.dispatchEvent(new Event('change'));" +
+      " t.querySelector('.btn').click(); await pause(150);" +
+      " const sim = t.querySelector('.sim'); const coins = [...sim.querySelectorAll('.coin')];" +
+      " coins[0].click(); coins[1].click(); coins[1].click();" +
+      " sim.querySelector('.btn').click(); await pause(60);" +
+      " const balanced = sim.querySelector('.sim-verdict').textContent.includes('рівновага');" +
+      " const labels = [...sim.querySelectorAll('.ask-opt')].map(o => o.textContent);" +
+      " const want = balanced ? 'Серед тих, що на столі' : 'На чашах — поки не знаю, на якій';" +
+      " const button = [...sim.querySelectorAll('.ask-opt')].find(o => o.textContent === want);" +
+      " button.click(); await pause(40);" +
+      " return labels.length + '|' + (sim.querySelector('.ask-opt') ? 'лишилось' : 'прийнято'); })()"
+  );
+  expect("у режимі «невідомо» приймається відповідь «на чашах»", unknownAsk === "4|прийнято", unknownAsk);
+
+  // Другий симулятор — девʼять монет із лімітом на два зважування.
+  const limited = await evaluate(
+    "(async () => { const sim = [...document.querySelectorAll('.sim')][1];" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " sim.querySelectorAll('.ghost-btn')[2].click(); await pause(30);" +
+      " for (let round = 0; round < 3; round++) {" +
+      "   sim.querySelectorAll('.ghost-btn')[1].click(); await pause(20);" +
+      "   const coins = [...sim.querySelectorAll('.coin')];" +
+      "   coins[0].click(); coins[1].click(); coins[1].click();" +
+      "   sim.querySelector('.btn').click(); await pause(40);" +
+      "   for (const option of [...sim.querySelectorAll('.ask-opt')]) {" +
+      "     option.click(); await pause(20);" +
+      "     if (!sim.querySelector('.ask-opt')) break; } }" +
+      " return sim.querySelector('.sim-verdict').textContent; })()"
+  );
+  expect("ліміт зважувань спрацьовує", limited.includes("скінчилися"), limited.slice(0, 60));
+
+  // Темна панель терезів стоїть і на пергаментній картці задачі — її кнопки та згортки
+  // не мають перефарбовуватись у колір пергаменту й зливатися з тлом.
+  const simOnParchment = await evaluate(
+    "(() => { const pick = (sel) => { const n = document.querySelector(sel); const s = getComputedStyle(n); return s.color; };" +
+      /* Беремо «Зняти з чаш»: кнопка «Назвати фальшиву» перемикається й міняє колір навмисно. */
+      " const a = pick('.block.scales-block .sim .toolbar .ghost-btn:nth-of-type(3)');" +
+      " const b = pick('.block.problem .sim .toolbar .ghost-btn:nth-of-type(3)');" +
+      " const c = pick('.block.problem .sim details summary');" +
+      " return (a === b ? 'ok' : a + ' проти ' + b) + '|' + (a === c ? 'ok' : a + ' проти ' + c); })()"
+  );
+  expect("кнопки терезів читаються й усередині задачі", simOnParchment === "ok|ok", simOnParchment);
+
+  /* ---------- завдання ---------- */
+
+  const quiz = await evaluate(
+    "(async () => { const b = document.querySelector('.block.quiz'); b.querySelectorAll('.option')[2].click();" +
+      " await new Promise(r => setTimeout(r, 40)); return b.querySelector('.verdict').className + '|' + b.querySelector('.done-mark').textContent; })()"
+  );
+  expect("quiz зараховує правильну відповідь", quiz === "verdict ok|✓", quiz);
+
+  const quizWrong = await evaluate(
+    "(async () => { const b = document.querySelector('.block.quiz'); b.querySelectorAll('.option')[0].click();" +
+      " await new Promise(r => setTimeout(r, 40)); return b.querySelector('.verdict').className; })()"
+  );
+  expect("quiz не зараховує хибну відповідь", quizWrong === "verdict no", quizWrong);
+
+  const input = await evaluate(
+    "(async () => { const b = document.querySelector('.block.input'); const f = b.querySelector('.answer-input');" +
+      " f.value = '  3 '; b.querySelector('.btn').click(); await new Promise(r => setTimeout(r, 40));" +
+      " return b.querySelector('.verdict').className + '|' + b.querySelector('.done-mark').textContent; })()"
+  );
+  expect("input приймає відповідь із зайвими пробілами", input === "verdict ok|✓", input);
+
+  const multi = await evaluate(
+    "(async () => { const b = document.querySelector('.block.multi'); const opts = b.querySelectorAll('.option');" +
+      " opts[1].click(); opts[2].click(); b.querySelector('.btn').click(); await new Promise(r => setTimeout(r, 40));" +
+      " return b.querySelector('.verdict').className + '|' + b.querySelector('.done-mark').textContent; })()"
+  );
+  expect("multi зараховує повний набір", multi === "verdict ok|✓", multi);
+
+  const order = await evaluate(
+    "(async () => { const b = document.querySelector('.block.order');" +
+      " for (let step = 0; step < 4; step++) {" +
+      "   const want = ['Поділити','Дві купки','За результатом','Повторити'][step];" +
+      "   [...b.querySelectorAll('.chip')].find(c => c.textContent.startsWith(want)).click();" +
+      "   await new Promise(r => setTimeout(r, 30)); }" +
+      " return b.querySelector('.verdict').className + '|' + b.querySelector('.done-mark').textContent; })()"
+  );
+  expect("order зараховує правильну послідовність", order === "verdict ok|✓", order);
+
+  // Кнопка самоперевірки потрібна темам без симулятора. Якщо в занятті терези скрізь — пропускаємо.
+  const selfCheck = await evaluate(
+    "(async () => { const b = [...document.querySelectorAll('.block.problem')].find(p => !p.querySelector('.sim'));" +
+      " if (!b) return 'у цьому занятті терези є в кожній задачі';" +
+      " b.querySelector('.btn').click(); await new Promise(r => setTimeout(r, 40));" +
+      " return b.querySelector('.done-mark').textContent; })()"
+  );
+  expect("задача без терезів зараховується кнопкою", selfCheck === "✓" || selfCheck.startsWith("у цьому"), selfCheck);
+
+  // Домашнє: список задано, позначки стоять, стрибок працює.
+  const homework = await evaluate(
+    "(async () => { const card = document.querySelector('.block.homework');" +
+      " if (!card) return 'картки домашнього немає';" +
+      " const listed = [...card.querySelectorAll('.hw-num')].map(n => n.textContent).join(',');" +
+      " const marked = [...document.querySelectorAll('.block.problem.homework-task')]" +
+      "   .map(p => p.getAttribute('data-problem')).join(',');" +
+      " const badges = document.querySelectorAll('.block.problem .hw-badge').length;" +
+      " return listed + '|' + marked + '|' + badges; })()"
+  );
+  expect("домашнє позначене: 1, 3, 5, 10", homework === "1,3,5,10|1,3,5,10|4", homework);
+
+  // Свічки: кожна запалена відкриває рівно одну підказку, і ні слова більше.
+  const candles = await evaluate(
+    "(async () => { const task = document.querySelector('[data-problem=\"10\"]');" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " const box = task.querySelector('.hint-box'); if (!box) return 'свічок немає';" +
+      " const before = box.querySelectorAll('.hint-line').length;" +
+      " const candle = box.querySelector('.candle');" +
+      " candle.click(); await pause(20);" +
+      " const afterOne = box.querySelectorAll('.hint-line').length;" +
+      " while (!candle.disabled) { candle.click(); await pause(15); }" +
+      " return before + '|' + afterOne + '|' + box.querySelectorAll('.hint-line').length" +
+      "   + '|' + (box.querySelector('.hint-last') ? 'догоріли' : 'нема'); })()"
+  );
+  expect("підказки-свічки відкриваються по одній", candles === "0|1|4|догоріли", candles);
+
+  // Кожна задача має або терези, або кнопку самоперевірки — інакше її нічим закрити.
+  const closable = await evaluate(
+    "(() => { const all = [...document.querySelectorAll('.block.problem')];" +
+      " const bad = all.filter(p => !p.querySelector('.sim') && !p.querySelector('.btn'));" +
+      " return all.length + '|' + bad.length; })()"
+  );
+  expect("кожну задачу є чим закрити", /\|0$/.test(closable), closable);
+
+  /* ---------- прогрес і верстка ---------- */
+
+  const stored = await evaluate("(() => { try { return localStorage.getItem('fimli.v1') || 'null'; } catch (e) { return 'SecurityError'; } })()");
+  expect("прогрес пишеться в localStorage", stored !== "null" && stored !== "SecurityError", String(stored).slice(0, 70));
+
+  const mini = await evaluate("document.getElementById('progressMini').textContent");
+  expect("лічильник угорі рахує", /^[1-9]/.test(mini), mini);
+
+  const overflow = await evaluate(
+    "(async () => { const before = innerWidth; return document.documentElement.scrollWidth - document.documentElement.clientWidth; })()"
+  );
+  expect("сторінка не їде вбік", overflow <= 0, "зайвих пікселів: " + overflow);
+
+  /* ---------- телефон і планшет ---------- */
+
+  const SCREENS = [
+    { name: "телефон", width: 390, height: 844 },
+    { name: "планшет", width: 820, height: 1180 },
+  ];
+
+  for (const screen of SCREENS) {
+    await call("Emulation.setDeviceMetricsOverride", {
+      width: screen.width,
+      height: screen.height,
+      deviceScaleFactor: 2,
+      mobile: true,
+    });
+    await sleep(400);
+    const over = await evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth");
+    expect("на екрані «" + screen.name + "» верстка тримається", over <= 0, "зайвих пікселів: " + over);
+  }
+
+  // Палець має тягнути монету так само, як миша. Дотики справжні, не підроблені кліки.
+  await call("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await call("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+  await sleep(300);
+  await evaluate(
+    "(async () => { const sim = document.querySelector('.block.scales-block .sim');" +
+      " sim.querySelectorAll('.ghost-btn')[2].click(); sim.scrollIntoView({ block: 'center' });" +
+      " await new Promise(r => setTimeout(r, 350)); })()"
+  );
+  const finger = JSON.parse(
+    await evaluate(
+      "(() => { const sim = document.querySelector('.block.scales-block .sim');" +
+        " const c = sim.querySelector('.coin').getBoundingClientRect();" +
+        " const p = sim.querySelector('.arm.left .pan').getBoundingClientRect();" +
+        " return JSON.stringify({ cx: c.left + c.width / 2, cy: c.top + c.height / 2," +
+        "   px: p.left + p.width / 2, py: p.top + p.height / 2, size: Math.round(c.width) }); })()"
+    )
+  );
+  await call("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: finger.cx, y: finger.cy, id: 1 }] });
+  for (let step = 1; step <= 6; step++) {
+    await call("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: finger.cx + ((finger.px - finger.cx) * step) / 6, y: finger.cy + ((finger.py - finger.cy) * step) / 6, id: 1 }],
+    });
+  }
+  await call("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await sleep(200);
+  const touched = await evaluate(
+    "(() => { const sim = document.querySelector('.block.scales-block .sim');" +
+      " return (sim.querySelector('.arm.left .coin') ? 'на лівій чаші' : 'не доїхала')" +
+      "   + '|' + document.querySelectorAll('.drag-ghost').length; })()"
+  );
+  expect("пальцем монета теж перетягується", touched === "на лівій чаші|0", touched);
+
+  // Дрібна монета — промах пальцем. Міряємо найменшу на сторінці.
+  const smallest = await evaluate(
+    "Math.round(Math.min(...[...document.querySelectorAll('.table-coins .coin')].map(c => c.getBoundingClientRect().width)))"
+  );
+  expect("монети на столі достатні під палець (від 32 px)", smallest >= 32, "найменша: " + smallest + " px");
+
+  await call("Emulation.setTouchEmulationEnabled", { enabled: false });
+  await call("Emulation.clearDeviceMetricsOverride");
+
+  const errors = cdp.events
+    .filter((event) => event.method === "Log.entryAdded" && event.params.entry.level === "error")
+    .map((event) => event.params.entry.text);
+  expect("у консолі немає помилок", errors.length === 0, errors.join(" | "));
+
+  chrome.kill();
+  if (failures.length) {
+    console.error("\nПровалів: " + failures.length);
+    process.exit(1);
+  }
+  console.log("\nУсе гаразд.");
+  process.exit(0);
+})().catch((error) => {
+  console.error(error);
+  chrome.kill();
+  process.exit(1);
+});

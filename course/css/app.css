@@ -1,0 +1,577 @@
+/* Антураж: нічний Ґрінґотс. Темне тло, свічки, пергамент, золото. */
+
+:root {
+  --night:      #0a0913;
+  --night-2:    #15122a;
+  --gold:       #d9a441;
+  --gold-hi:    #f4cf80;
+  --gold-dim:   #8a6a2a;
+  --parch:      #f3e7cf;
+  --parch-2:    #e7d7b8;
+  --ink:        #2b2118;
+  --ink-soft:   #5b4a36;
+  --cream:      #efe4cf;
+  --red:        #8c1111;
+  --red-soft:   #f6dcd8;
+  --green:      #1f5132;
+  --green-soft: #ddf0e2;
+  --blue:       #26417e;
+  --blue-soft:  #dde6f8;
+  --purple:     #4b2e83;
+  --purple-soft:#e8ddf7;
+  --radius: 14px;
+  --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--night);
+  color: var(--cream);
+  font: 17px/1.65 var(--sans);
+  min-height: 100vh;
+}
+
+/* Зоряне небо і світло свічок десь угорі */
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, rgba(255,255,255,.7), transparent),
+    radial-gradient(1.5px 1.5px at 68% 12%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1.5px 1.5px at 84% 44%, rgba(255,255,255,.6), transparent),
+    radial-gradient(1.5px 1.5px at 32% 62%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1.5px 1.5px at 51% 88%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1.5px 1.5px at 22% 91%, rgba(255,255,255,.35), transparent),
+    radial-gradient(900px 500px at 50% -10%, rgba(217,164,65,.20), transparent 70%),
+    linear-gradient(180deg, var(--night-2), var(--night) 60%);
+}
+
+/* ---------- шапка ---------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(10, 9, 19, .82);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(217,164,65,.28);
+}
+
+.brand {
+  font-family: var(--serif);
+  font-size: 19px;
+  letter-spacing: .3px;
+  color: var(--gold-hi);
+  text-decoration: none;
+}
+
+.brand .thin { color: var(--cream); opacity: .65; font-size: 15px; }
+.wand { filter: drop-shadow(0 0 6px rgba(244,207,128,.7)); }
+.spacer { flex: 1; }
+
+.bar-label {
+  font-size: 13px;
+  color: var(--gold);
+  letter-spacing: .3px;
+}
+
+main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 28px 18px 80px;
+}
+
+/* ---------- титул сторінки ---------- */
+
+.kicker {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--gold);
+  letter-spacing: 1.4px;
+  font-size: 14px;
+}
+
+h1 {
+  font-family: var(--serif);
+  font-size: 34px;
+  line-height: 1.2;
+  margin: 6px 0 10px;
+  color: var(--gold-hi);
+  text-shadow: 0 0 24px rgba(217,164,65,.28);
+}
+
+.lead { color: #d8ccb6; margin: 0 0 18px; }
+
+.hero { text-align: center; padding: 26px 14px 8px; }
+.hero h1 { font-size: 42px; }
+.hero .lead { max-width: 620px; margin: 0 auto 20px; }
+
+.crest { font-size: 54px; line-height: 1; filter: drop-shadow(0 0 18px rgba(217,164,65,.55)); }
+
+/* ---------- смужка прогресу ---------- */
+
+.bar {
+  height: 7px;
+  border-radius: 99px;
+  background: rgba(217,164,65,.16);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold-hi));
+  box-shadow: 0 0 10px rgba(244,207,128,.6);
+  transition: width .4s ease;
+}
+
+.overall { max-width: 420px; margin: 0 auto; }
+.score { margin: 14px 0 22px; }
+
+/* ---------- картки уроків ---------- */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 26px;
+}
+
+.card {
+  display: block;
+  padding: 18px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--ink);
+  background: linear-gradient(160deg, var(--parch), var(--parch-2));
+  border: 1px solid var(--gold-dim);
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(217,164,65,.28);
+}
+
+.card .num { font-family: var(--serif); font-style: italic; color: var(--ink-soft); font-size: 14px; }
+.card .title { font-family: var(--serif); font-size: 21px; margin: 4px 0 6px; }
+.card .sub { font-size: 14px; color: var(--ink-soft); }
+.card .stat { font-size: 13px; color: var(--ink-soft); margin-top: 10px; }
+.card .bar { background: rgba(43,33,24,.14); }
+
+/* ---------- цілі уроку ---------- */
+
+.goals {
+  background: rgba(217,164,65,.09);
+  border: 1px solid rgba(217,164,65,.35);
+  border-left: 4px solid var(--gold);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 16px 0;
+  font-size: 15px;
+}
+
+.goals b { color: var(--gold-hi); font-family: var(--serif); }
+.goals ul { margin: 8px 0 0; padding-left: 20px; }
+
+/* ---------- блоки ---------- */
+
+.block {
+  border-radius: var(--radius);
+  margin: 20px 0;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+
+.block-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-family: var(--serif);
+  font-size: 16px;
+  background: rgba(0,0,0,.14);
+  border-bottom: 1px solid rgba(43,33,24,.16);
+}
+
+.tag {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: rgba(43,33,24,.14);
+  white-space: nowrap;
+}
+
+.done-mark { margin-left: auto; color: var(--green); font-weight: bold; font-size: 19px; }
+
+.block-body { padding: 16px; }
+.block-body > :first-child { margin-top: 0; }
+.block-body > :last-child { margin-bottom: 0; }
+
+/* Пергаментна основа для всього, що читається */
+.block.plain, .block.story, .block.steps, .block.terms,
+.block.problem, .block.quiz, .block.multi, .block.order, .block.input {
+  background: linear-gradient(170deg, var(--parch), var(--parch-2));
+  color: var(--ink);
+  border: 1px solid var(--gold-dim);
+}
+
+.block.plain { padding: 18px; }
+
+h2 { font-family: var(--serif); font-size: 25px; margin: 26px 0 10px; color: inherit; }
+h3 { font-family: var(--serif); font-size: 19px; margin: 18px 0 6px; }
+
+.block.plain h2:first-child { margin-top: 0; }
+
+/* Оповідь з буквицею */
+.block.story { font-family: var(--serif); font-size: 18px; }
+.block.story .block-body > p:first-child::first-letter {
+  float: left;
+  font-family: var(--serif);
+  font-size: 3.4em;
+  line-height: .82;
+  padding: 6px 10px 0 0;
+  color: var(--red);
+}
+
+/* Заклинання: головне правило */
+.block.spell {
+  background: linear-gradient(150deg, #2a1f45, #171232);
+  border: 1px solid var(--gold);
+  color: var(--cream);
+  text-align: center;
+  box-shadow: 0 0 46px rgba(217,164,65,.3), 0 10px 30px rgba(0,0,0,.5);
+}
+
+.block.spell .block-head { justify-content: center; border-bottom-color: rgba(217,164,65,.3); }
+.block.spell .spell-name {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 30px;
+  color: var(--gold-hi);
+  text-shadow: 0 0 20px rgba(244,207,128,.65);
+  margin: 4px 0 12px;
+}
+.block.spell .tag { background: rgba(217,164,65,.2); color: var(--gold-hi); }
+
+/* Пастка */
+.block.trap { background: var(--red-soft); color: var(--ink); border: 1px solid var(--red); }
+.block.trap .block-head { background: var(--red); color: #fff; border-bottom: none; }
+.block.trap .tag { background: rgba(255,255,255,.22); color: #fff; }
+
+/* Ідея */
+.block.idea { background: var(--blue-soft); color: var(--ink); border: 1px solid var(--blue); }
+.block.idea .block-head { background: var(--blue); color: #fff; border-bottom: none; }
+.block.idea .tag { background: rgba(255,255,255,.22); color: #fff; }
+
+/* Підсумок */
+.block.summary { background: var(--green-soft); color: var(--ink); border: 1px solid var(--green); }
+.block.summary .block-head { background: var(--green); color: #fff; border-bottom: none; }
+.block.summary .tag { background: rgba(255,255,255,.22); color: #fff; }
+
+/* З життя і з гри */
+.block.life { background: var(--green-soft); color: var(--ink); border: 1px solid var(--green); }
+.block.life .block-head { background: rgba(31,81,50,.14); }
+.block.game { background: var(--purple-soft); color: var(--ink); border: 1px solid var(--purple); }
+.block.game .block-head { background: var(--purple); color: #fff; border-bottom: none; }
+.block.game .tag { background: rgba(255,255,255,.22); color: #fff; }
+
+/* ---------- таблиці ---------- */
+
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+table td, table th { border-bottom: 1px solid rgba(43,33,24,.18); padding: 8px 10px; text-align: left; vertical-align: top; }
+table th { font-family: var(--serif); color: var(--ink-soft); }
+.terms td:first-child { font-weight: 600; width: 34%; font-family: var(--serif); }
+.powers tr.hit td { background: rgba(217,164,65,.25); font-weight: 600; }
+
+/* ---------- кроки розвʼязання ---------- */
+
+.steps ol { counter-reset: step; list-style: none; padding-left: 0; margin: 0; }
+.steps ol > li {
+  counter-increment: step;
+  position: relative;
+  padding: 10px 0 10px 46px;
+  border-bottom: 1px dashed rgba(43,33,24,.2);
+}
+.steps ol > li:last-child { border-bottom: none; }
+.steps ol > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--serif);
+  background: var(--gold);
+  color: #2b2118;
+  box-shadow: 0 0 12px rgba(217,164,65,.6);
+}
+
+.case { margin: 8px 0; padding-left: 14px; border-left: 3px solid var(--gold-dim); }
+.case b { font-family: var(--serif); }
+
+/* ---------- згортки ---------- */
+
+details {
+  border: 1px dashed var(--gold-dim);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 12px 0;
+  background: rgba(217,164,65,.07);
+}
+
+details summary {
+  cursor: pointer;
+  font-family: var(--serif);
+  color: var(--gold-hi);
+  list-style: none;
+}
+
+.block.plain details summary,
+.block.problem details summary,
+.block.steps details summary { color: var(--red); }
+
+details summary::-webkit-details-marker { display: none; }
+details summary::before { content: "\2726  "; }
+details[open] summary { margin-bottom: 8px; }
+
+/* ---------- задачі ---------- */
+
+.block.problem .block-head { background: rgba(140,17,17,.1); }
+.problem-num {
+  font-family: var(--serif);
+  background: var(--red);
+  color: #fff;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 15px;
+  flex: none;
+}
+
+/* ---------- домашнє ---------- */
+
+.block.homework {
+  background: linear-gradient(165deg, #f6ecd6, #e3d0ab);
+  color: var(--ink);
+  border: 1px solid var(--red);
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+}
+
+.block.homework .block-head { background: var(--red); color: #fff; border-bottom: none; }
+.block.homework .tag { background: rgba(255,255,255,.22); color: #fff; }
+
+.hw-list { display: grid; gap: 8px; margin-top: 10px; }
+
+.hw-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(140,17,17,.35);
+  background: rgba(255,255,255,.5);
+  color: var(--ink);
+}
+
+.hw-item:hover { border-color: var(--red); background: rgba(255,255,255,.85); }
+
+.hw-num {
+  font-family: var(--serif);
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--red);
+  color: #fff;
+}
+
+.hw-title { font-family: var(--serif); font-size: 17px; }
+.hw-note { margin-left: auto; font-size: 13px; color: var(--ink-soft); font-style: italic; }
+
+/* Задача, яку задали: золота смуга збоку й печатка в шапці. */
+.block.problem.homework-task { border-left: 5px solid var(--gold); }
+
+.hw-badge {
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: var(--gold);
+  color: #2b2118;
+  white-space: nowrap;
+}
+
+/* ---------- підказки-свічки ---------- */
+
+.hint-box {
+  border: 1px dashed var(--gold-dim);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  background: rgba(217,164,65,.08);
+}
+
+.hint-intro { font-size: 14px; color: var(--ink-soft); font-style: italic; }
+
+.hint-lines { display: grid; gap: 8px; }
+.hint-lines:not(:empty) { margin-top: 10px; }
+
+.hint-line {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: rgba(255,255,255,.55);
+  border-left: 3px solid var(--gold);
+  font-size: 15px;
+}
+
+.hint-line .flame { flex: none; filter: drop-shadow(0 0 7px rgba(244,207,128,.95)); }
+
+.hint-last { font-size: 14px; color: var(--ink-soft); font-style: italic; margin-top: 4px; }
+
+.block.problem .hint-box .candle { color: var(--ink); border-color: var(--gold-dim); background: rgba(217,164,65,.16); }
+.block.problem .hint-box .candle:hover { background: rgba(217,164,65,.3); }
+.block.problem .hint-box .candle:disabled { opacity: .5; cursor: default; }
+
+/* ---------- кнопки ---------- */
+
+.btn, .ghost-btn {
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 9px 16px;
+  border: 1px solid var(--gold-dim);
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  color: #2b2118;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(217,164,65,.45); }
+.btn:disabled { opacity: .45; cursor: default; transform: none; box-shadow: none; }
+
+.ghost-btn { background: transparent; color: var(--gold-hi); text-decoration: none; display: inline-block; }
+.ghost-btn:hover { background: rgba(217,164,65,.14); }
+
+.block.plain .ghost-btn, .block.problem .ghost-btn, .block.steps .ghost-btn {
+  color: var(--ink); border-color: var(--ink-soft);
+}
+.block.plain .ghost-btn:hover, .block.problem .ghost-btn:hover { background: rgba(43,33,24,.08); }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+
+.navrow { display: flex; justify-content: space-between; gap: 12px; margin-top: 34px; flex-wrap: wrap; }
+.page-foot { margin-top: 40px; text-align: center; }
+
+/* ---------- питання ---------- */
+
+.options { display: grid; gap: 8px; margin: 12px 0; }
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(43,33,24,.28);
+  background: rgba(255,255,255,.45);
+  color: var(--ink);
+}
+
+.option:hover { border-color: var(--gold); background: rgba(255,255,255,.75); }
+.option .letter {
+  font-family: var(--serif);
+  width: 24px; height: 24px;
+  flex: none;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(43,33,24,.12);
+  font-size: 14px;
+}
+.option.picked { border-color: var(--blue); background: var(--blue-soft); }
+.option.right { border-color: var(--green); background: var(--green-soft); }
+.option.right .letter { background: var(--green); color: #fff; }
+.option.wrong { border-color: var(--red); background: var(--red-soft); }
+.option.wrong .letter { background: var(--red); color: #fff; }
+
+.verdict { margin-top: 10px; font-size: 15px; min-height: 1.2em; }
+.verdict.ok { color: var(--green); font-weight: 600; }
+.verdict.no { color: var(--red); }
+
+.answer-input {
+  font: inherit;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(43,33,24,.35);
+  background: rgba(255,255,255,.6);
+  color: var(--ink);
+  width: 220px;
+  max-width: 100%;
+}
+
+.slots { display: grid; gap: 6px; margin: 12px 0; }
+.slot {
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px dashed rgba(43,33,24,.35);
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+.slot.filled { border-style: solid; border-color: var(--green); background: var(--green-soft); color: var(--ink); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 99px;
+  border: 1px solid rgba(43,33,24,.3);
+  background: rgba(255,255,255,.5);
+  color: var(--ink);
+}
+.chip:hover { border-color: var(--gold); }
+.chip.used { opacity: .35; pointer-events: none; }
+.chip.wrong { border-color: var(--red); background: var(--red-soft); }
+
+/* ---------- малюнки ---------- */
+
+.figure { margin: 16px 0; text-align: center; }
+.figure img { max-width: 100%; border-radius: 10px; border: 1px solid var(--gold-dim); }
+.figure figcaption { font-size: 14px; color: var(--gold); font-style: italic; margin-top: 6px; }
+
+@media (max-width: 640px) {
+  h1 { font-size: 27px; }
+  .hero h1 { font-size: 31px; }
+  main { padding: 20px 14px 70px; }
+}
