@@ -62,13 +62,13 @@ const SCALES = (function () {
     const tableCoins = el("div", { class: "table-coins" });
     const tray = el("div", { class: "tray" }, el("div", { class: "tray-label", text: "Стіл" }), tableCoins);
 
-    /* Полиця для доведено справжніх монет. Вони не зникають — ними далі важать як гирями,
+    /* Полиця для доведено справжніх монет. Вони не зникають — це еталони ✓, ними далі важать,
        але на робочому столі їм не місце: дитина має бачити тільки підозрюваних. */
     const spareCoins = el("div", { class: "table-coins" });
     const spare = el(
       "div",
       { class: "tray spare" },
-      el("div", { class: "tray-label", text: "Доведено справжні · можна брати як гирі" }),
+      el("div", { class: "tray-label", text: "Еталони ✓ · точно справжні, можна класти на чашу" }),
       spareCoins
     );
     const verdict = el("div", { class: "sim-verdict" });
@@ -81,7 +81,7 @@ const SCALES = (function () {
       const coin = el("button", {
         class: "coin" + (isKnown ? " known" : ""),
         text: isKnown ? "✓" : String(i + 1),
-        title: isKnown ? "Завідомо справжня монета-гиря" : undefined,
+        title: isKnown ? "Еталон на старті — точно справжня монета" : undefined,
         type: "button",
       });
       coin.addEventListener("pointerdown", (event) => onPointerDown(i, coin, event));
@@ -108,7 +108,7 @@ const SCALES = (function () {
       coins.forEach((coin, i) => {
         const proven = state[i] === "out";
         coin.classList.toggle("out", proven);
-        /* Значки ↑ і ↓ мають сенс лише там, де напрям невідомий: в інших задачах
+        /* Значки В і Л мають сенс лише там, де напрям невідомий: в інших задачах
            він однаковий для всіх монет і намальований у самій умові. */
         coin.classList.toggle("sus-heavy", declared === "unknown" && state[i] === "heavy");
         coin.classList.toggle("sus-light", declared === "unknown" && state[i] === "light");
@@ -125,7 +125,7 @@ const SCALES = (function () {
       const right = zones.filter((z) => z === "right").length;
       const heavy = state.filter((s) => s === "heavy").length;
       const light = state.filter((s) => s === "light").length;
-      const marks = declared === "unknown" && heavy + light ? " (↑" + heavy + " ↓" + light + ")" : "";
+      const marks = declared === "unknown" && heavy + light ? " (В: " + heavy + ", Л: " + light + ")" : "";
       counter.textContent =
         "Зважувань: " + used + (limit ? " з " + limit : "") +
         " · підозрюваних: " + candidates.length + marks +
@@ -166,7 +166,7 @@ const SCALES = (function () {
       if (hit(leftPan.getBoundingClientRect(), x, y, PAN_PAD)) return "left";
       if (hit(rightPan.getBoundingClientRect(), x, y, PAN_PAD)) return "right";
       if (hit(tray.getBoundingClientRect(), x, y, 10)) return "table";
-      /* Полиця з гирями — теж «стіл»: монета, скинута туди, просто йде з чаші. */
+      /* Полиця еталонів — теж «стіл»: монета, скинута туди, просто йде з чаші. */
       if (hit(spare.getBoundingClientRect(), x, y, 10)) return "table";
       return null;
     }
@@ -316,8 +316,8 @@ const SCALES = (function () {
       left: "На лівій чаші",
       right: "На правій чаші",
       table: "Серед тих, що на столі",
-      tilt: "Хто внизу — підозра «важча» ↑, хто вгорі — «легша» ↓",
-      swap: "Хто внизу — «легша» ↓, хто вгорі — «важча» ↑",
+      tilt: "Хто внизу — підозра «важча» В, хто вгорі — «легша» Л",
+      swap: "Хто внизу — «легша» Л, хто вгорі — «важча» В",
       none: "Усі, хто на чашах, справжні",
     };
 
@@ -388,7 +388,7 @@ const SCALES = (function () {
       }
 
       /* Вгадала: застосовуємо крок міркування й звільняємо чаші під наступне зважування.
-         Доведено справжні монети лишаються в грі — саме ними далі зручно важити як гирями. */
+         Доведено справжні монети лишаються в грі — це еталони ✓, ними далі зручно важити. */
       pendingAsk = false;
       ask.textContent = "";
       applyOutcome(outcome);
@@ -399,14 +399,14 @@ const SCALES = (function () {
       verdict.textContent =
         candidates.length === 1
           ? "Так. Лишилася одна підозрювана монета — № " + (candidates[0] + 1) + ". Тисни «Назвати фальшиву»."
-          : "Так. Підозрюваних лишилося " + candidates.length + suspectList() + ". Решта доведено справжні.";
+          : "Так. Підозрюваних лишилося " + candidates.length + suspectList() + ". Решта — еталони ✓.";
     }
 
     /* При невідомому напрямі важливо не тільки скільки монет лишилося, а й з якою міткою:
        саме цей список дитина тримає на папері, і він має збігатися з екраном. */
     function suspectList() {
       if (declared !== "unknown") return "";
-      const named = candidates.map((i) => "№" + (i + 1) + (state[i] === "heavy" ? " ↑" : state[i] === "light" ? " ↓" : ""));
+      const named = candidates.map((i) => "№" + (i + 1) + (state[i] === "heavy" ? "В" : state[i] === "light" ? "Л" : ""));
       return ": " + named.join(", ");
     }
 
@@ -429,8 +429,8 @@ const SCALES = (function () {
         verdict.className = "sim-verdict no";
         verdict.textContent =
           i < n
-            ? "Монета № " + (i + 1) + " вже доведено справжня — ти сама її виключила. Обери іншу."
-            : "Монета ✓ — гиря, вона справжня з самого початку. Обери іншу.";
+            ? "Монета № " + (i + 1) + " — уже еталон ✓: ти сама довела, що вона справжня. Обери іншу."
+            : "Монета ✓ — еталон на старті, вона справжня з самого початку. Обери іншу.";
         return;
       }
       if (i === fakeIndex) {
@@ -514,7 +514,7 @@ const SCALES = (function () {
           n +
           "</b>." +
           KIND_TEXT[declared] +
-          (known ? " Є <b>" + known + "</b> завідомо справжня монета-гиря з позначкою ✓." : "") +
+          (known ? " Є еталон на старті ✓ — точно справжня монета." : "") +
           (limit ? " Ґоблін дозволяє <b>" + limit + "</b> " + weighWord(limit) + "." : " Зважуй скільки хочеш — це тренування."),
     });
 
@@ -543,8 +543,8 @@ const SCALES = (function () {
 
   /* Скільки зважувань треба напевно, якщо треба назвати монету, але не обовʼязково її напрям.
      Напрям відомий: вистачає 3^k ≥ n.
-     Напрям невідомий без готової гирі: межа (3^k − 1) / 2.
-     Завідомо справжня гиря додає ще одну монету: межа (3^k + 1) / 2. */
+     Напрям невідомий, еталона на старті немає: межа (3^k − 1) / 2.
+     Еталон на старті додає ще одну монету: межа (3^k + 1) / 2. */
   function minWeighings(n, kind, known) {
     if (n < 2) return 0;
     let k = 1;
@@ -583,8 +583,8 @@ const SCALES = (function () {
 
     const knownRow = el("div", { class: "trainer-kinds" });
     const knownButtons = [
-      [0, "без гирі"],
-      [1, "є гиря ✓"],
+      [0, "без еталона"],
+      [1, "є еталон ✓"],
     ].map(([value, label]) => {
       const button = el("button", { class: "kind-btn", type: "button", text: label, "data-known": String(value) });
       button.addEventListener("click", () => {
@@ -609,11 +609,11 @@ const SCALES = (function () {
           (kind !== "unknown"
             ? " Бо 3<sup>" + k + "</sup> = " + Math.pow(3, k) + ", а це не менше за " + n + "."
             : !cfg.chooseKnown
-              /* Тренажер без перемикача гирі говорить так само, як до появи гирі. */
+              /* Тренажер без перемикача еталона говорить так само, як до його появи. */
               ? " Напрям невідомий, тому кожна монета дає два варіанти — і межа вже не 3<sup>k</sup>, а (3<sup>k</sup>&nbsp;−&nbsp;1)&nbsp;/&nbsp;2."
               : known
-                ? " Є справжня гиря: межа (3<sup>k</sup>&nbsp;+&nbsp;1)&nbsp;/&nbsp;2 = <b>" + capacity + "</b>."
-                : " Гирі немає: межа (3<sup>k</sup>&nbsp;−&nbsp;1)&nbsp;/&nbsp;2 = <b>" + capacity + "</b>.")
+                ? " Є еталон на старті: межа (3<sup>k</sup>&nbsp;+&nbsp;1)&nbsp;/&nbsp;2 = <b>" + capacity + "</b>."
+                : " Еталона на старті немає: межа (3<sup>k</sup>&nbsp;−&nbsp;1)&nbsp;/&nbsp;2 = <b>" + capacity + "</b>.")
         : "Монета одна — вона ж і фальшива, зважувати нема чого.";
     }
 
@@ -646,8 +646,8 @@ const SCALES = (function () {
         { class: "trainer-controls" },
         el("label", { class: "trainer-field" }, el("span", { text: "Монет" }), number),
         range,
-        cfg.onlyUnknown ? null : el("div", { class: "trainer-field" }, el("span", { text: "Фальшива" }), kindRow),
-        cfg.chooseKnown ? el("div", { class: "trainer-field" }, el("span", { text: "Справжня гиря" }), knownRow) : null,
+        el("div", { class: "trainer-field" }, el("span", { text: "Фальшива" }), kindRow),
+        cfg.chooseKnown ? el("div", { class: "trainer-field" }, el("span", { text: "Еталон на старті" }), knownRow) : null,
         startBtn
       ),
       goal,

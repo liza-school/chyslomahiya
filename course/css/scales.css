@@ -262,29 +262,16 @@
   color: #fff;
 }
 
-/* Доведено справжня: лежить на столі й більше не грає. */
+/* Доведено справжня — еталон ✓. Не тьмяніє: це активний інструмент, ним далі важать.
+   Еталон на старті виглядає так само, тільки замість номера на ньому ✓. */
 .coin.out {
-  opacity: .34;
-  cursor: default;
-  filter: grayscale(.7);
-  box-shadow: none;
-}
-
-.coin.out:hover { transform: none; box-shadow: none; }
-
-/* Гарантовано справжня монета доступна від початку. Вона живе на полиці гир,
-   але не тьмяніє: це активний інструмент, а не відкинута підозра. */
-.coin.known.out {
-  opacity: 1;
-  filter: none;
-  cursor: grab;
   background: radial-gradient(circle at 34% 28%, #e7ffe0, #78bd72 56%, #35663a);
   color: #102d15;
   border-color: #4e8e53;
   box-shadow: 0 0 0 2px rgba(126,211,135,.3), 0 2px 6px rgba(0,0,0,.55);
 }
 
-.coin.known.out:hover {
+.coin.out:hover {
   transform: translateY(-2px);
   box-shadow: 0 0 0 2px rgba(126,211,135,.5), 0 6px 14px rgba(80,170,90,.45);
 }
@@ -400,20 +387,19 @@
 
 .tray.spare .table-coins { min-height: 30px; }
 
-/* На полиці гирі мають бути видимі — ними ще працюють. */
-.tray.spare .coin.out { opacity: .5; }
-.tray.spare .coin.known.out { opacity: 1; }
-
 .tray.spare.empty { display: none; }
 
 /* Значок треба до чогось причепити, а сама монета не позиціонована. */
 .coin.sus-heavy,
-.coin.sus-light { position: relative; }
+.coin.sus-light,
+.coin.out { position: relative; }
 
 /* Підозра з напрямком: значок росте з самої монети, щоб дитина бачила
-   не просто «підозрювана», а «підозрювана лише важча / лише легша». */
+   не просто «підозрювана», а «підозрювана лише важча (В) / лише легша (Л)».
+   Букви, а не стрілки: важча монета тягне чашу вниз, і стрілка вгору тут плутала. */
 .coin.sus-heavy::after,
-.coin.sus-light::after {
+.coin.sus-light::after,
+.coin.out:not(.known)::after {
   position: absolute;
   top: -5px;
   right: -5px;
@@ -428,13 +414,20 @@
 }
 
 .coin.sus-heavy::after {
-  content: "↑";
+  content: "В";
   background: #c9862f;
   color: #21160a;
 }
 
 .coin.sus-light::after {
-  content: "↓";
+  content: "Л";
   background: #6fa8c9;
   color: #08161d;
+}
+
+/* Еталон, який дитина заробила сама: номер лишається, ✓ у куточку. */
+.coin.out:not(.known)::after {
+  content: "✓";
+  background: #4e8e53;
+  color: #eaffe4;
 }

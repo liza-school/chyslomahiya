@@ -286,16 +286,23 @@ const LESSONS = ["l01", "l02"];
   );
   expect("після відповіді підозрювані не зникають", narrowing === "3|3|6", narrowing);
 
-  /* Доведено справжню монету можна зняти з полиці назад на чашу — вона гиря, а не сміття. */
+  /* Доведено справжню монету можна зняти з полиці назад на чашу — вона еталон ✓, а не сміття. */
   const weightsUsable = await evaluate(
     "(async () => { const sim = [...document.querySelectorAll('.sim')][1];" +
       " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
       " const spare = sim.querySelector('.tray.spare .coin');" +
       " if (!spare) return 'полиця порожня';" +
       " spare.click(); await pause(30);" +
-      " return sim.querySelector('.arm.left .coin') ? 'гиря на чаші' : 'не переїхала'; })()"
+      " return sim.querySelector('.arm.left .coin') ? 'еталон на чаші' : 'не переїхала'; })()"
   );
-  expect("гирю з полиці можна повернути на чашу", weightsUsable === "гиря на чаші", weightsUsable);
+  expect("еталон із полиці можна повернути на чашу", weightsUsable === "еталон на чаші", weightsUsable);
+
+  const provenLook = await evaluate(
+    "(() => { const c = [...document.querySelectorAll('.sim .coin.out')].find(x => !x.classList.contains('known'));" +
+      " if (!c) return 'немає доведених';" +
+      " return getComputedStyle(c, '::after').content + '|' + getComputedStyle(c).opacity; })()"
+  );
+  expect("доведено справжня монета — еталон зі значком ✓ і не тьмяніє", provenLook === '"✓"|1', provenLook);
 
   /* Класика теми: 12 монет, невідомо в який бік. Перше зважування 1-4 проти 5-8 роздає
      мітки «тільки важча» / «тільки легша», друге переставляє монети між чашами (1,2,5 проти 3,4,6),
@@ -334,29 +341,34 @@ const LESSONS = ["l01", "l02"];
     return at < 0 || end < 0 ? text.trim() : text.slice(at + 2, end);
   };
   const AFTER_FIRST = {
-    ліва: "№1 ↑, №2 ↑, №3 ↑, №4 ↑, №5 ↓, №6 ↓, №7 ↓, №8 ↓",
-    права: "№1 ↓, №2 ↓, №3 ↓, №4 ↓, №5 ↑, №6 ↑, №7 ↑, №8 ↑",
+    ліва: "№1В, №2В, №3В, №4В, №5Л, №6Л, №7Л, №8Л",
+    права: "№1Л, №2Л, №3Л, №4Л, №5В, №6В, №7В, №8В",
     рівно: "№9, №10, №11, №12",
   };
   const AFTER_SECOND = {
-    "ліва/ліва": "№1 ↑, №2 ↑, №6 ↓",
-    "ліва/права": "№3 ↑, №4 ↑, №5 ↓",
-    "ліва/рівно": "№7 ↓, №8 ↓",
-    "права/ліва": "№3 ↓, №4 ↓, №5 ↑",
-    "права/права": "№1 ↓, №2 ↓, №6 ↑",
-    "права/рівно": "№7 ↑, №8 ↑",
-    "рівно/ліва": "№9 ↑, №10 ↑, №11 ↓, №12 ↓",
-    "рівно/права": "№9 ↓, №10 ↓, №11 ↑, №12 ↑",
+    "ліва/ліва": "№1В, №2В, №6Л",
+    "ліва/права": "№3В, №4В, №5Л",
+    "ліва/рівно": "№7Л, №8Л",
+    "права/ліва": "№3Л, №4Л, №5В",
+    "права/права": "№1Л, №2Л, №6В",
+    "права/рівно": "№7В, №8В",
+    "рівно/ліва": "№9В, №10В, №11Л, №12Л",
+    "рівно/права": "№9Л, №10Л, №11В, №12В",
   };
   const first = tiltOf(played.out1);
   const second = tiltOf(played.out2);
   const gotFirst = suspectsOf(played.said1);
   const gotSecond = suspectsOf(played.said2);
   expect(
-    "мітки ↑↓ роздані правильно (" + first + ")",
+    "мітки В/Л роздані правильно (" + first + ")",
     gotFirst === AFTER_FIRST[first],
     gotFirst + (gotFirst === AFTER_FIRST[first] ? "" : " ≠ " + AFTER_FIRST[first])
   );
+  const markLetters = await evaluate(
+    "(() => { const t = document.querySelector('.block.trainer-block');" +
+      " return [...t.querySelectorAll('.coin.sus-heavy, .coin.sus-light')].map(c => getComputedStyle(c, '::after').content).sort().filter((x, i, a) => a.indexOf(x) === i).join(''); })()"
+  );
+  expect("підозри позначені буквами В і Л, не стрілками", /^("[ВЛ]")+$/.test(markLetters), markLetters);
   expect(
     "перехресне зважування вирізає монети правильно (" + first + "/" + second + ")",
     gotSecond === AFTER_SECOND[first + "/" + second],
@@ -377,13 +389,13 @@ const LESSONS = ["l01", "l02"];
   );
   expect("тренажер бере 100 монет і рахує межу для невідомого напряму", trainerBig === "100|true|Вистачить 5 зважувань", trainerBig);
 
-  // Гиря живе лише в l02: тренажер і монети l01 мають лишитися такими, як були до неї.
+  // Еталон на старті живе лише в l02: тренажер і монети l01 про нього не знають.
   const l01Untouched = await evaluate(
     "(() => { const t = document.querySelector('.block.trainer-block');" +
       " return t.querySelector('.trainer-goal').textContent.includes('кожна монета дає два варіанти')" +
       "   + '|' + t.querySelectorAll('[data-known]').length + '|' + document.querySelectorAll('.coin.known, .coin[title]').length; })()"
   );
-  expect("тренажер і монети l01 не знають про гирю", l01Untouched === "true|0|0", l01Untouched);
+  expect("тренажер і монети l01 не знають про еталон на старті", l01Untouched === "true|0|0", l01Untouched);
 
   // У режимі «невідомо» після нерівноваги чесна відповідь — «на чашах, поки не знаю, на якій».
   const unknownAsk = await evaluate(
@@ -397,7 +409,7 @@ const LESSONS = ["l01", "l02"];
       " sim.querySelector('.btn').click(); await pause(60);" +
       " const balanced = sim.querySelector('.sim-verdict').textContent.includes('рівновага');" +
       " const labels = [...sim.querySelectorAll('.ask-opt')].map(o => o.textContent);" +
-      " const want = balanced ? 'Серед тих, що на столі' : 'Хто внизу — підозра «важча» ↑, хто вгорі — «легша» ↓';" +
+      " const want = balanced ? 'Серед тих, що на столі' : 'Хто внизу — підозра «важча» В, хто вгорі — «легша» Л';" +
       " const button = [...sim.querySelectorAll('.ask-opt')].find(o => o.textContent === want);" +
       " button.click(); await pause(40);" +
       " return labels.length + '|' + (sim.querySelector('.ask-opt') ? 'лишилось' : 'прийнято'); })()"
@@ -529,7 +541,7 @@ const LESSONS = ["l01", "l02"];
       "].join(',')"
   );
   expect(
-    "межі без гирі й з гирею перемикаються на правильних числах",
+    "межі без еталона й з еталоном перемикаються на правильних числах",
     boundaries === "2,3,3,4,4,5,2,3,3,4,4,5",
     boundaries
   );
@@ -543,7 +555,7 @@ const LESSONS = ["l01", "l02"];
       "   + t.querySelector('.trainer-goal').textContent.trim(); })()"
   );
   expect(
-    "l02 починає тренажер із 5 підозрілих та справжньої гирі",
+    "l02 починає тренажер із 5 підозрілих та еталона на старті",
     lesson2Start.startsWith("5|true|6|1|Вистачить 2 зважування"),
     lesson2Start
   );
@@ -561,7 +573,7 @@ const LESSONS = ["l01", "l02"];
       " return without + '|' + withCoin; })()"
   );
   expect(
-    "перемикач гирі змінює межу 5 монет із 3 зважувань на 2",
+    "перемикач еталона змінює межу 5 монет із 3 зважувань на 2",
     trainerToggle.startsWith("5/0/Вистачить 3 зважування") && trainerToggle.includes("|6/1/Вистачить 2 зважування"),
     trainerToggle
   );
@@ -576,19 +588,19 @@ const LESSONS = ["l01", "l02"];
   );
   const lesson2SimData = JSON.parse(lesson2Configs);
   expect(
-    "симулятори l02 мають 5+гиря/2 і 14+гиря/3",
+    "симулятори l02 мають 5+еталон/2 і 14+еталон/3",
     lesson2SimData.length === 2 &&
       lesson2SimData[0].coins === 6 && lesson2SimData[0].known === 1 && lesson2SimData[0].counter.includes("0 з 2") &&
       lesson2SimData[1].coins === 15 && lesson2SimData[1].known === 1 && lesson2SimData[1].counter.includes("0 з 3"),
     lesson2Configs
   );
 
-  /* Гиря ✓ — інструмент: на полиці не тьмяніє, назвати її фальшивою не можна, і фальшивою вона не буває ніколи. */
+  /* Еталон ✓ — інструмент: на полиці не тьмяніє, назвати його фальшивим не можна, і фальшивим він не буває ніколи. */
   const knownShelf = await evaluate(
     "(() => { const c = document.querySelector('.block.problem .sim .tray.spare .coin.known');" +
       " return c ? getComputedStyle(c).opacity : 'немає на полиці'; })()"
   );
-  expect("гиря ✓ на полиці не тьмяніє", knownShelf === "1", knownShelf);
+  expect("еталон ✓ на полиці не тьмяніє", knownShelf === "1", knownShelf);
 
   const knownDeclared = await evaluate(
     "(async () => { const sim = document.querySelector('.block.problem .sim');" +
@@ -598,7 +610,7 @@ const LESSONS = ["l01", "l02"];
       " const said = sim.querySelector('.sim-verdict').className + '|' + sim.querySelector('.sim-verdict').textContent;" +
       " arm.click(); await pause(20); return said; })()"
   );
-  expect("гирю ✓ не можна назвати фальшивою", /^sim-verdict no\|Монета ✓ — гиря/.test(knownDeclared), knownDeclared.slice(0, 60));
+  expect("еталон ✓ не можна назвати фальшивим", /^sim-verdict no\|Монета ✓ — еталон на старті/.test(knownDeclared), knownDeclared.slice(0, 60));
 
   const fakeNeverKnown = await evaluate(
     "(async () => { const sim = document.querySelector('.block.problem .sim');" +
@@ -612,14 +624,14 @@ const LESSONS = ["l01", "l02"];
       " reset.click(); await pause(20);" +
       " return [...found].sort().join(','); })()"
   );
-  expect("фальшивою буває лише підозріла монета, не гиря ✓", fakeNeverKnown.length > 0 && !fakeNeverKnown.includes("✓"), fakeNeverKnown);
+  expect("фальшивою буває лише підозріла монета, не еталон ✓", fakeNeverKnown.length > 0 && !fakeNeverKnown.includes("✓"), fakeNeverKnown);
 
   const knownUsable = await evaluate(
     "(async () => { const sim = document.querySelector('.block.problem .sim');" +
       " const coin = sim.querySelector('.coin.known'); coin.click(); await new Promise(r => setTimeout(r, 30));" +
-      " return sim.querySelector('.arm.left .coin.known') ? 'гиря на чаші' : 'не переїхала'; })()"
+      " return sim.querySelector('.arm.left .coin.known') ? 'еталон на чаші' : 'не переїхала'; })()"
   );
-  expect("готову справжню гирю можна покласти на чашу", knownUsable === "гиря на чаші", knownUsable);
+  expect("еталон на старті можна покласти на чашу", knownUsable === "еталон на чаші", knownUsable);
 
   const lesson2Progress = await evaluate(
     "(async () => { const q = document.querySelector('.block.quiz'); q.querySelectorAll('.option')[1].click();" +
