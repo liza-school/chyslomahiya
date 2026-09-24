@@ -17,6 +17,8 @@ const SCALES = (function () {
 
   function create(cfg, onSolve) {
     const n = cfg.n;
+    const known = Math.max(0, Math.round(Number(cfg.known) || 0));
+    const total = n + known;
     const limit = cfg.limit || 0;
     const declared = cfg.fake || "light";
 
@@ -35,8 +37,8 @@ const SCALES = (function () {
        "light" — якщо фальшива, то лише легша;
        "out"   — доведено справжня.
        Задача з відомим напрямом — окремий випадок: там усі монети стартують уже з міткою. */
-    let state = new Array(n).fill("?");
-    const zones = new Array(n).fill("table");
+    let state = new Array(total).fill("?");
+    const zones = new Array(total).fill("table");
     const ask = el("div", { class: "ask" });
 
     /* ---------- каркас ---------- */
@@ -74,8 +76,14 @@ const SCALES = (function () {
     const counter = el("span", { class: "sim-stat" });
 
     const coins = [];
-    for (let i = 0; i < n; i++) {
-      const coin = el("button", { class: "coin", text: String(i + 1), type: "button" });
+    for (let i = 0; i < total; i++) {
+      const isKnown = i >= n;
+      const coin = el("button", {
+        class: "coin" + (isKnown ? " known" : ""),
+        text: isKnown ? "✓" : String(i + 1),
+        title: isKnown ? "Завідомо справжня монета-гиря" : undefined,
+        type: "button",
+      });
       coin.addEventListener("pointerdown", (event) => onPointerDown(i, coin, event));
       coin.addEventListener("pointermove", onPointerMove);
       coin.addEventListener("pointerup", onPointerUp);
@@ -252,10 +260,10 @@ const SCALES = (function () {
       let rightMass = 0;
       zones.forEach((zone, i) => {
         if (zone === "left") {
-          leftIds.push(i + 1);
+          leftIds.push(i < n ? String(i + 1) : "✓");
           leftMass += weight(i);
         } else if (zone === "right") {
-          rightIds.push(i + 1);
+          rightIds.push(i < n ? String(i + 1) : "✓");
           rightMass += weight(i);
         }
       });
@@ -419,7 +427,10 @@ const SCALES = (function () {
     function declare(i) {
       if (state[i] === "out") {
         verdict.className = "sim-verdict no";
-        verdict.textContent = "Монета № " + (i + 1) + " вже доведено справжня — ти сама її виключила. Обери іншу.";
+        verdict.textContent =
+          i < n
+            ? "Монета № " + (i + 1) + " вже доведено справжня — ти сама її виключила. Обери іншу."
+            : "Монета ✓ — гиря, вона справжня з самого початку. Обери іншу.";
         return;
       }
       if (i === fakeIndex) {
@@ -448,10 +459,12 @@ const SCALES = (function () {
       solved = false;
       drag = null;
       pendingAsk = false;
-      candidates = coins.map((_, i) => i);
+      candidates = Array.from({ length: n }, (_, i) => i);
       /* У задачі з відомим напрямом підозра в усіх однакова з самого початку —
          тоді перетин робить рівно те саме, що робив старий зонний фільтр. */
-      state = new Array(n).fill(declared === "unknown" ? "?" : declared);
+      state = new Array(n)
+        .fill(declared === "unknown" ? "?" : declared)
+        .concat(new Array(known).fill("out"));
       ask.textContent = "";
       zones.fill("table");
       coins.forEach((coin) => {
@@ -501,12 +514,13 @@ const SCALES = (function () {
           n +
           "</b>." +
           KIND_TEXT[declared] +
+          (known ? " Є <b>" + known + "</b> завідомо справжня монета-гиря з позначкою ✓." : "") +
           (limit ? " Ґоблін дозволяє <b>" + limit + "</b> " + weighWord(limit) + "." : " Зважуй скільки хочеш — це тренування."),
     });
 
     const root = el(
       "div",
-      { class: "sim" + (n > 36 ? " many" : "") },
+      { class: "sim" + (total > 36 ? " many" : "") },
       task,
       el("div", { class: "sim-hint", text: "Перетягни монету на чашу — мишкою або пальцем. Короткий клац теж переставляє." }),
       el("div", { class: "sim-head" }, counter),
@@ -527,14 +541,14 @@ const SCALES = (function () {
     return k >= 5 ? "зважувань" : "зважування";
   }
 
-  /* Скільки зважувань треба напевно.
-     Напрям відомий: одне зважування ділить купку на три, тож вистачає 3^k ≥ n.
-     Напрям невідомий: кожна монета може бути легшою або важчою, тож варіантів удвічі більше,
-     і працює межа (3^k − 1) / 2 ≥ n. */
-  function minWeighings(n, kind) {
+  /* Скільки зважувань треба напевно, якщо треба назвати монету, але не обовʼязково її напрям.
+     Напрям відомий: вистачає 3^k ≥ n.
+     Напрям невідомий без готової гирі: межа (3^k − 1) / 2.
+     Завідомо справжня гиря додає ще одну монету: межа (3^k + 1) / 2. */
+  function minWeighings(n, kind, known) {
     if (n < 2) return 0;
     let k = 1;
-    while (kind === "unknown" ? (Math.pow(3, k) - 1) / 2 < n : Math.pow(3, k) < n) k += 1;
+    while (kind === "unknown" ? (Math.pow(3, k) + (known ? 1 : -1)) / 2 < n : Math.pow(3, k) < n) k += 1;
     return k;
   }
 
@@ -549,6 +563,7 @@ const SCALES = (function () {
   function trainer(cfg, onSolve) {
     let n = cfg.n || 12;
     let kind = cfg.fake || "light";
+    let known = cfg.known ? 1 : 0;
 
     const number = el("input", { class: "trainer-num", type: "number", min: "1", max: "100", value: String(n) });
     const range = el("input", { class: "trainer-range", type: "range", min: "1", max: "100", value: String(n) });
@@ -566,24 +581,45 @@ const SCALES = (function () {
       return button;
     });
 
+    const knownRow = el("div", { class: "trainer-kinds" });
+    const knownButtons = [
+      [0, "без гирі"],
+      [1, "є гиря ✓"],
+    ].map(([value, label]) => {
+      const button = el("button", { class: "kind-btn", type: "button", text: label, "data-known": String(value) });
+      button.addEventListener("click", () => {
+        known = value;
+        paint();
+      });
+      knownRow.append(button);
+      return button;
+    });
+
     const clamp = (value) => Math.min(100, Math.max(1, Math.round(Number(value) || 1)));
 
     function paint() {
       number.value = String(n);
       range.value = String(n);
       kindButtons.forEach((button) => button.classList.toggle("on", button.getAttribute("data-kind") === kind));
-      const k = minWeighings(n, kind);
+      knownButtons.forEach((button) => button.classList.toggle("on", Number(button.getAttribute("data-known")) === known));
+      const k = minWeighings(n, kind, known);
+      const capacity = kind === "unknown" ? (Math.pow(3, k) + (known ? 1 : -1)) / 2 : Math.pow(3, k);
       goal.innerHTML = k
         ? "Вистачить <b>" + k + "</b> " + weighWord(k) + "." +
-          (kind === "unknown"
-            ? " Напрям невідомий, тому кожна монета дає два варіанти — і межа вже не 3<sup>k</sup>, а (3<sup>k</sup>&nbsp;−&nbsp;1)&nbsp;/&nbsp;2."
-            : " Бо 3<sup>" + k + "</sup> = " + Math.pow(3, k) + ", а це не менше за " + n + ".")
+          (kind !== "unknown"
+            ? " Бо 3<sup>" + k + "</sup> = " + Math.pow(3, k) + ", а це не менше за " + n + "."
+            : !cfg.chooseKnown
+              /* Тренажер без перемикача гирі говорить так само, як до появи гирі. */
+              ? " Напрям невідомий, тому кожна монета дає два варіанти — і межа вже не 3<sup>k</sup>, а (3<sup>k</sup>&nbsp;−&nbsp;1)&nbsp;/&nbsp;2."
+              : known
+                ? " Є справжня гиря: межа (3<sup>k</sup>&nbsp;+&nbsp;1)&nbsp;/&nbsp;2 = <b>" + capacity + "</b>."
+                : " Гирі немає: межа (3<sup>k</sup>&nbsp;−&nbsp;1)&nbsp;/&nbsp;2 = <b>" + capacity + "</b>.")
         : "Монета одна — вона ж і фальшива, зважувати нема чого.";
     }
 
     function build() {
       slot.textContent = "";
-      slot.append(create({ n: n, fake: kind, limit: minWeighings(n, kind) }, onSolve));
+      slot.append(create({ n: n, known: known, fake: kind, limit: minWeighings(n, kind, known) }, onSolve));
     }
 
     number.addEventListener("change", () => {
@@ -610,7 +646,8 @@ const SCALES = (function () {
         { class: "trainer-controls" },
         el("label", { class: "trainer-field" }, el("span", { text: "Монет" }), number),
         range,
-        el("div", { class: "trainer-field" }, el("span", { text: "Фальшива" }), kindRow),
+        cfg.onlyUnknown ? null : el("div", { class: "trainer-field" }, el("span", { text: "Фальшива" }), kindRow),
+        cfg.chooseKnown ? el("div", { class: "trainer-field" }, el("span", { text: "Справжня гиря" }), knownRow) : null,
         startBtn
       ),
       goal,

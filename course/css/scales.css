@@ -272,6 +272,23 @@
 
 .coin.out:hover { transform: none; box-shadow: none; }
 
+/* Гарантовано справжня монета доступна від початку. Вона живе на полиці гир,
+   але не тьмяніє: це активний інструмент, а не відкинута підозра. */
+.coin.known.out {
+  opacity: 1;
+  filter: none;
+  cursor: grab;
+  background: radial-gradient(circle at 34% 28%, #e7ffe0, #78bd72 56%, #35663a);
+  color: #102d15;
+  border-color: #4e8e53;
+  box-shadow: 0 0 0 2px rgba(126,211,135,.3), 0 2px 6px rgba(0,0,0,.55);
+}
+
+.coin.known.out:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 2px rgba(126,211,135,.5), 0 6px 14px rgba(80,170,90,.45);
+}
+
 /* ---------- питання після зважування ---------- */
 
 .ask {
@@ -361,6 +378,11 @@
   .coin { width: 32px; height: 32px; font-size: 13px; }
 }
 
+@media (max-width: 340px) {
+  .sim { --beamw: 218px; padding: 12px; }
+  .arm { width: 90px; margin-left: -45px; }
+}
+
 /* Полиця доведено справжніх монет: окремо від робочого столу, щоб на столі
    лишалися тільки підозрювані. Порожню полицю не показуємо. */
 .tray.spare {
@@ -380,6 +402,7 @@
 
 /* На полиці гирі мають бути видимі — ними ще працюють. */
 .tray.spare .coin.out { opacity: .5; }
+.tray.spare .coin.known.out { opacity: 1; }
 
 .tray.spare.empty { display: none; }
 

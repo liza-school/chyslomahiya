@@ -85,7 +85,7 @@ function connect(url) {
   return { send, open, events };
 }
 
-const LESSONS = ["l01"];
+const LESSONS = ["l01", "l02"];
 
 (async () => {
   const cdp = connect(await browserWs());
@@ -377,6 +377,14 @@ const LESSONS = ["l01"];
   );
   expect("тренажер бере 100 монет і рахує межу для невідомого напряму", trainerBig === "100|true|Вистачить 5 зважувань", trainerBig);
 
+  // Гиря живе лише в l02: тренажер і монети l01 мають лишитися такими, як були до неї.
+  const l01Untouched = await evaluate(
+    "(() => { const t = document.querySelector('.block.trainer-block');" +
+      " return t.querySelector('.trainer-goal').textContent.includes('кожна монета дає два варіанти')" +
+      "   + '|' + t.querySelectorAll('[data-known]').length + '|' + document.querySelectorAll('.coin.known, .coin[title]').length; })()"
+  );
+  expect("тренажер і монети l01 не знають про гирю", l01Untouched === "true|0|0", l01Untouched);
+
   // У режимі «невідомо» після нерівноваги чесна відповідь — «на чашах, поки не знаю, на якій».
   const unknownAsk = await evaluate(
     "(async () => { const t = document.querySelector('.block.trainer-block');" +
@@ -509,37 +517,163 @@ const LESSONS = ["l01"];
 
   /* ---------- прогрес і верстка ---------- */
 
-  const stored = await evaluate("(() => { try { return localStorage.getItem('chyslomahiya.v1') || 'null'; } catch (e) { return 'SecurityError'; } })()");
-  expect("прогрес пишеться в localStorage", stored !== "null" && stored !== "SecurityError", String(stored).slice(0, 70));
+  await go("#/l/l02");
+  const boundaries = await evaluate(
+    "[" +
+      "SCALES.minWeighings(4, 'unknown', 0), SCALES.minWeighings(5, 'unknown', 0)," +
+      "SCALES.minWeighings(13, 'unknown', 0), SCALES.minWeighings(14, 'unknown', 0)," +
+      "SCALES.minWeighings(40, 'unknown', 0), SCALES.minWeighings(41, 'unknown', 0)," +
+      "SCALES.minWeighings(5, 'unknown', 1), SCALES.minWeighings(6, 'unknown', 1)," +
+      "SCALES.minWeighings(14, 'unknown', 1), SCALES.minWeighings(15, 'unknown', 1)," +
+      "SCALES.minWeighings(41, 'unknown', 1), SCALES.minWeighings(42, 'unknown', 1)" +
+      "].join(',')"
+  );
+  expect(
+    "межі без гирі й з гирею перемикаються на правильних числах",
+    boundaries === "2,3,3,4,4,5,2,3,3,4,4,5",
+    boundaries
+  );
+
+  const lesson2Start = await evaluate(
+    "(() => { const t = document.querySelector('.block.trainer-block');" +
+      " return t.querySelector('.trainer-num').value + '|'" +
+      "   + t.querySelector('[data-known=\"1\"]').classList.contains('on') + '|'" +
+      "   + t.querySelectorAll('.sim .coin').length + '|'" +
+      "   + t.querySelectorAll('.sim .coin.known.out').length + '|'" +
+      "   + t.querySelector('.trainer-goal').textContent.trim(); })()"
+  );
+  expect(
+    "l02 починає тренажер із 5 підозрілих та справжньої гирі",
+    lesson2Start.startsWith("5|true|6|1|Вистачить 2 зважування"),
+    lesson2Start
+  );
+
+  const trainerToggle = await evaluate(
+    "(async () => { const t = document.querySelector('.block.trainer-block');" +
+      " const pause = () => new Promise(r => setTimeout(r, 80));" +
+      " const start = t.querySelector('.trainer-controls .btn');" +
+      " t.querySelector('[data-known=\"0\"]').click(); start.click(); await pause();" +
+      " const without = t.querySelectorAll('.sim .coin').length + '/' + t.querySelectorAll('.sim .coin.known').length" +
+      "   + '/' + t.querySelector('.trainer-goal').textContent.trim();" +
+      " t.querySelector('[data-known=\"1\"]').click(); start.click(); await pause();" +
+      " const withCoin = t.querySelectorAll('.sim .coin').length + '/' + t.querySelectorAll('.sim .coin.known').length" +
+      "   + '/' + t.querySelector('.trainer-goal').textContent.trim();" +
+      " return without + '|' + withCoin; })()"
+  );
+  expect(
+    "перемикач гирі змінює межу 5 монет із 3 зважувань на 2",
+    trainerToggle.startsWith("5/0/Вистачить 3 зважування") && trainerToggle.includes("|6/1/Вистачить 2 зважування"),
+    trainerToggle
+  );
+
+  const lesson2Configs = await evaluate(
+    "JSON.stringify([...document.querySelectorAll('.block.problem')].filter(p => p.querySelector('.sim')).map(p => ({" +
+      " title: p.querySelector('.block-head span:nth-child(2)').textContent," +
+      " coins: p.querySelectorAll('.sim .coin').length," +
+      " known: p.querySelectorAll('.sim .coin.known.out').length," +
+      " counter: p.querySelector('.sim-stat').textContent" +
+      "})))"
+  );
+  const lesson2SimData = JSON.parse(lesson2Configs);
+  expect(
+    "симулятори l02 мають 5+гиря/2 і 14+гиря/3",
+    lesson2SimData.length === 2 &&
+      lesson2SimData[0].coins === 6 && lesson2SimData[0].known === 1 && lesson2SimData[0].counter.includes("0 з 2") &&
+      lesson2SimData[1].coins === 15 && lesson2SimData[1].known === 1 && lesson2SimData[1].counter.includes("0 з 3"),
+    lesson2Configs
+  );
+
+  /* Гиря ✓ — інструмент: на полиці не тьмяніє, назвати її фальшивою не можна, і фальшивою вона не буває ніколи. */
+  const knownShelf = await evaluate(
+    "(() => { const c = document.querySelector('.block.problem .sim .tray.spare .coin.known');" +
+      " return c ? getComputedStyle(c).opacity : 'немає на полиці'; })()"
+  );
+  expect("гиря ✓ на полиці не тьмяніє", knownShelf === "1", knownShelf);
+
+  const knownDeclared = await evaluate(
+    "(async () => { const sim = document.querySelector('.block.problem .sim');" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " const arm = sim.querySelectorAll('.ghost-btn')[0];" +
+      " arm.click(); await pause(20); sim.querySelector('.coin.known').click(); await pause(20);" +
+      " const said = sim.querySelector('.sim-verdict').className + '|' + sim.querySelector('.sim-verdict').textContent;" +
+      " arm.click(); await pause(20); return said; })()"
+  );
+  expect("гирю ✓ не можна назвати фальшивою", /^sim-verdict no\|Монета ✓ — гиря/.test(knownDeclared), knownDeclared.slice(0, 60));
+
+  const fakeNeverKnown = await evaluate(
+    "(async () => { const sim = document.querySelector('.block.problem .sim');" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " const [arm, , reset] = sim.querySelectorAll('.ghost-btn'); const found = new Set();" +
+      " for (let round = 0; round < 40; round++) {" +
+      "   reset.click(); await pause(5); arm.click(); await pause(5);" +
+      "   for (const coin of [...sim.querySelectorAll('.coin')]) {" +
+      "     coin.click(); await pause(3);" +
+      "     if (sim.querySelector('.sim-verdict').classList.contains('ok')) { found.add(coin.textContent); break; } } }" +
+      " reset.click(); await pause(20);" +
+      " return [...found].sort().join(','); })()"
+  );
+  expect("фальшивою буває лише підозріла монета, не гиря ✓", fakeNeverKnown.length > 0 && !fakeNeverKnown.includes("✓"), fakeNeverKnown);
+
+  const knownUsable = await evaluate(
+    "(async () => { const sim = document.querySelector('.block.problem .sim');" +
+      " const coin = sim.querySelector('.coin.known'); coin.click(); await new Promise(r => setTimeout(r, 30));" +
+      " return sim.querySelector('.arm.left .coin.known') ? 'гиря на чаші' : 'не переїхала'; })()"
+  );
+  expect("готову справжню гирю можна покласти на чашу", knownUsable === "гиря на чаші", knownUsable);
+
+  const lesson2Progress = await evaluate(
+    "(async () => { const q = document.querySelector('.block.quiz'); q.querySelectorAll('.option')[1].click();" +
+      " await new Promise(r => setTimeout(r, 40)); return localStorage.getItem('chyslomahiya.v1') || ''; })()"
+  );
+
+  expect("взаємодія з l02 пише окремий ключ прогресу", lesson2Progress.includes('"l02:q1"'), lesson2Progress.slice(0, 100));
+  expect(
+    "прогрес l01 лишається після взаємодії з l02",
+    lesson2Progress.includes('"l01:') && lesson2Progress.includes('"l02:'),
+    lesson2Progress.slice(0, 100)
+  );
 
   const mini = await evaluate("document.getElementById('progressMini').textContent");
   expect("лічильник угорі рахує", /^[1-9]/.test(mini), mini);
 
-  const overflow = await evaluate(
-    "(async () => { const before = innerWidth; return document.documentElement.scrollWidth - document.documentElement.clientWidth; })()"
-  );
-  expect("сторінка не їде вбік", overflow <= 0, "зайвих пікселів: " + overflow);
-
   /* ---------- телефон і планшет ---------- */
 
   const SCREENS = [
+    { name: "вузький телефон 320", width: 320, height: 720 },
+    { name: "телефон 360", width: 360, height: 800 },
     { name: "телефон", width: 390, height: 844 },
     { name: "планшет", width: 820, height: 1180 },
   ];
 
-  for (const screen of SCREENS) {
-    await call("Emulation.setDeviceMetricsOverride", {
-      width: screen.width,
-      height: screen.height,
-      deviceScaleFactor: 2,
-      mobile: true,
-    });
-    await sleep(400);
-    const over = await evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth");
-    expect("на екрані «" + screen.name + "» верстка тримається", over <= 0, "зайвих пікселів: " + over);
+  for (const id of LESSONS) {
+    await go("#/l/" + id);
+    for (const screen of SCREENS) {
+      await call("Emulation.setDeviceMetricsOverride", {
+        width: screen.width,
+        height: screen.height,
+        deviceScaleFactor: 2,
+        mobile: true,
+      });
+      await sleep(300);
+      const widths = JSON.parse(
+        await evaluate(
+          "JSON.stringify({ page: document.documentElement.scrollWidth - document.documentElement.clientWidth," +
+            " block: Math.max(0, ...[...document.querySelectorAll('.block')].map(b => b.scrollWidth - b.clientWidth))," +
+            " offenders: [...document.querySelectorAll('.block')].filter(b => b.scrollWidth > b.clientWidth)" +
+            "   .map(b => (b.querySelector('.block-head span:nth-child(2)')?.textContent || b.className)" +
+            "     + ':' + (b.scrollWidth - b.clientWidth)).join(', ') })"
+        )
+      );
+      expect(
+        id + " на екрані «" + screen.name + "» не обрізається",
+        widths.page <= 0 && widths.block <= 0,
+        "сторінка: " + widths.page + ", блок: " + widths.block + (widths.offenders ? ", " + widths.offenders : "")
+      );
+    }
   }
 
   // Палець має тягнути монету так само, як миша. Дотики справжні, не підроблені кліки.
+  await go("#/l/l01");
   await call("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await call("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
   await sleep(300);

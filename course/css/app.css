@@ -299,6 +299,10 @@ table th { font-family: var(--serif); color: var(--ink-soft); }
 .terms td:first-child { font-weight: 600; width: 34%; font-family: var(--serif); }
 .powers tr.hit td { background: rgba(217,164,65,.25); font-weight: 600; }
 
+.limits-table { table-layout: fixed; font-size: 13px; }
+.limits-table th, .limits-table td { padding: 6px 4px; overflow-wrap: anywhere; }
+.limits-table th:first-child, .limits-table td:first-child { width: 46%; }
+
 /* ---------- кроки розвʼязання ---------- */
 
 .steps ol { counter-reset: step; list-style: none; padding-left: 0; margin: 0; }
