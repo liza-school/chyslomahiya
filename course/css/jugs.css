@@ -74,6 +74,7 @@
 .liquid-petrol .jug-liquid { background: linear-gradient(180deg, #f7dc8a, #c8951f); }
 .liquid-milk .jug-liquid { background: linear-gradient(180deg, #ffffff, #ddd3c0); }
 .liquid-butterbeer .jug-liquid { background: linear-gradient(180deg, #fff1c9 0 6px, #e0a24a 6px, #9b5d1c); }
+.liquid-pumpkin .jug-liquid { background: linear-gradient(180deg, #ffc27a, #d9731f); }
 
 /* Кришка: поки дитина не порахувала, рівень сховано — на око тут не міряють. */
 .jug.lidded .jug-liquid { opacity: 0; }
@@ -167,6 +168,55 @@
 .sim .pour-table tr.repeat td { color: #f3a39a; }
 
 .trainer-row { margin: 8px 0 0; }
+
+/* ---------- більярд ---------- */
+
+/* На телефоні більярд іде під питанням, щоб питання було поруч із відрами.
+   На широкому екрані — праворуч від відер. */
+.jugs-main { display: grid; grid-template-columns: minmax(0, 1fr); }
+.jugs-main > * { grid-column: 1; }
+
+@media (min-width: 700px) {
+  .jugs-main { grid-template-columns: minmax(0, 1fr) auto; column-gap: 18px; }
+  .jugs-main > .bil-box { grid-column: 2; grid-row: 1 / span 5; align-self: start; }
+}
+
+.bil-box { margin: 8px auto 4px; text-align: center; max-width: 100%; }
+.bil-caption { font-size: 12.5px; color: rgba(239,228,207,.6); max-width: 290px; margin: 2px auto 0; }
+
+.billiard, .state-map { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+
+/* Сукно зелене, бортики золоті — на темній панелі й на пергаменті однаково. */
+.bil-cloth { fill: #1f5132; }
+.bil-grid { stroke: rgba(255,255,255,.1); stroke-width: 1; fill: none; }
+.bil-rail { fill: none; stroke: var(--gold); stroke-width: 3; stroke-linejoin: round; }
+.bil-hole { fill: rgba(255,255,255,.45); }
+.bil-goal { stroke: #f4cf80; stroke-width: 2.5; stroke-dasharray: 5 4; fill: none; }
+.bil-goal-label { fill: #f4cf80; font: 700 12px var(--sans); }
+.bil-star { fill: #f4cf80; font: 700 18px var(--sans); }
+.bil-forbidden { stroke: #f3a39a; stroke-width: 2.5; }
+.bil-path { fill: none; stroke: #8fd0f5; stroke-width: 2.5; stroke-linejoin: round; }
+.bil-step { fill: #8fd0f5; }
+.bil-num { fill: #eaf6ff; font: 600 9.5px var(--sans); paint-order: stroke; stroke: #1f5132; stroke-width: 3px; }
+.bil-ghost { stroke: #8fd0f5; stroke-width: 2.5; stroke-dasharray: 3 3; }
+.bil-ghost-label { fill: #f4cf80; font: 700 13px var(--sans); }
+.bil-ball { fill: #fff; stroke: #2b2118; stroke-width: 1.5; filter: drop-shadow(0 0 4px rgba(255,255,255,.8)); }
+.bil-axis { fill: var(--ink-soft); font: 11px var(--sans); }
+.bil-name { fill: var(--ink-soft); font: 600 12px var(--sans); }
+.sim .bil-axis, .sim .bil-name { fill: var(--gold); }
+
+.bil-figure { margin: 12px 0; text-align: center; }
+.bil-figure figcaption { font-size: 13px; color: var(--ink-soft); font-style: italic; margin-top: 4px; }
+
+/* ---------- карта ходів ---------- */
+
+.map-edge { stroke: rgba(43,33,24,.3); stroke-width: 1.2; }
+.map-edge.on { stroke: var(--gold-dim); stroke-width: 3; }
+.map-node rect { fill: rgba(255,255,255,.7); stroke: var(--ink-soft); stroke-width: 1; }
+.map-node text { fill: var(--ink); font: 600 12px var(--sans); }
+.map-node.on rect { fill: #f6e3b4; stroke: var(--gold-dim); stroke-width: 2; }
+.map-node.goal rect { fill: var(--gold); stroke: var(--red); stroke-width: 2; }
+.map-row { fill: var(--ink-soft); font: italic 12px var(--serif); }
 
 @media (max-width: 520px) {
   .jugs-row { gap: 8px; }

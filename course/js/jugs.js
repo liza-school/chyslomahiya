@@ -156,24 +156,34 @@ const JUGS = (function () {
   /* Таблиця для розвʼязання: у занятті записуються лише ходи, а літри в кожному рядку
      рахує цей самий рушій. Хід, що нічого не змінює, або розвʼязання, яке не доходить
      до мети, — помилка в даних, і перевірка ловить її в консолі. */
-  function table(cfg, codes) {
+  function play(cfg, codes) {
     const caps = cfg.vessels;
-    const names = namesOf(cfg);
-    const source = SOURCES[cfg.source];
     const goal = goalOf(cfg);
     let state = startOf(cfg);
-    const rows = [{ step: 0, state: state, what: "початок" }];
+    const steps = [{ state: state, move: null }];
     codes.forEach((code, k) => {
       const move = parse(code);
       const after = apply(caps, state, move);
       if (!after) {
-        console.error("JUGS.table: хід " + code + " на кроці " + (k + 1) + " нічого не змінює");
+        console.error("JUGS: хід " + code + " на кроці " + (k + 1) + " нічого не змінює");
         return;
       }
       state = after;
-      rows.push({ step: k + 1, state: state, what: describe(move, names, source) });
+      steps.push({ state: state, move: move });
     });
-    if (goal && !goal(state)) console.error("JUGS.table: розвʼязання не доходить до мети (" + state.join(", ") + ")");
+    if (goal && !goal(state)) console.error("JUGS: розвʼязання не доходить до мети (" + state.join(", ") + ")");
+    return steps;
+  }
+
+  function table(cfg, codes) {
+    const names = namesOf(cfg);
+    const source = SOURCES[cfg.source];
+    const rows = play(cfg, codes).map((entry, k) => ({
+      step: k,
+      state: entry.state,
+      what: entry.move ? describe(entry.move, names, source) : "початок",
+    }));
+    const state = rows[rows.length - 1].state;
     const hits = hitCells(cfg, state);
     const last = rows.length - 1;
     return (
@@ -190,6 +200,267 @@ const JUGS = (function () {
         .join("") +
       "</tbody></table></div>"
     );
+  }
+
+  /* ---------- більярд: стан — точка, крок — відрізок ---------- */
+
+  /* Дві посудини з джерелом: по горизонталі перша, по вертикалі друга.
+     Три посудини без джерела: усього рідини не меншає й не більшає, тож стан задають
+     дві менші посудини, а велика (перша) тримає решту. Інших випадків у задачах немає. */
+  function planeOf(cfg) {
+    const caps = cfg.vessels;
+    const open = Boolean(SOURCES[cfg.source]);
+    if (caps.length === 2 && open) return { ax: 0, ay: 1, big: -1, total: 0 };
+    if (caps.length === 3 && !open) return { ax: 1, ay: 2, big: 0, total: startOf(cfg).reduce((a, b) => a + b, 0) };
+    return null;
+  }
+
+  /* Повний стан за точкою стола. Точка можлива, якщо жодна посудина не від'ємна й не переповнена;
+     на бортику — якщо хоч одна посудина порожня або повна. */
+  function stateAt(cfg, plane, x, y) {
+    const state = cfg.vessels.map(() => 0);
+    state[plane.ax] = x;
+    state[plane.ay] = y;
+    if (plane.big >= 0) state[plane.big] = plane.total - x - y;
+    return state;
+  }
+
+  const fits = (cfg, state) => state.every((amount, i) => amount >= 0 && amount <= cfg.vessels[i]);
+  const onRail = (cfg, state) => state.some((amount, i) => amount === 0 || amount === cfg.vessels[i]);
+
+  /* Відрізаємо від многокутника півплощину, де f < 0 (f — лінійна). */
+  function clip(poly, f) {
+    const out = [];
+    poly.forEach((p, k) => {
+      const q = poly[(k + 1) % poly.length];
+      const fp = f(p);
+      const fq = f(q);
+      if (fp >= 0) out.push(p);
+      if ((fp > 0 && fq < 0) || (fp < 0 && fq > 0)) {
+        const t = fp / (fp - fq);
+        out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
+      }
+    });
+    return out;
+  }
+
+  let svgIds = 0;
+
+  /* Малює стіл і шлях кулі. states — усі відомі стани по черзі; ghost — стан під кришкою:
+     куди куля покотилася, видно лише напрямком, а де зупинилася — дитина рахує сама. */
+  function billiardSVG(cfg, states, ghost) {
+    const plane = planeOf(cfg);
+    if (!plane) return "";
+    const caps = cfg.vessels;
+    const names = namesOf(cfg);
+    const W = caps[plane.ax];
+    const H = caps[plane.ay];
+    let poly = [[0, 0], [W, 0], [W, H], [0, H]];
+    if (plane.big >= 0) {
+      const most = plane.total;
+      const least = plane.total - caps[plane.big];
+      poly = clip(poly, (p) => most - p[0] - p[1]);
+      poly = clip(poly, (p) => p[0] + p[1] - least);
+    }
+
+    const u = Math.max(7, Math.min(40, 230 / H, 230 / W));
+    const L = 34;
+    const T = 10;
+    const R = 28;
+    const B = 34;
+    const X = (x) => +(L + x * u).toFixed(1);
+    const Y = (y) => +(T + (H - y) * u).toFixed(1);
+    const w = Math.round(L + W * u + R);
+    const h = Math.round(T + H * u + B);
+    const at = (state) => [X(state[plane.ax]), Y(state[plane.ay])];
+    const id = "bil" + ++svgIds;
+    const polyPoints = poly.map((p) => X(p[0]) + "," + Y(p[1])).join(" ");
+    const out = [];
+
+    out.push('<svg class="billiard" viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" role="img" aria-label="Більярд: кожна точка — стан, кожен відрізок — крок">');
+    out.push('<defs><clipPath id="' + id + '"><polygon points="' + polyPoints + '"/></clipPath></defs>');
+    out.push('<polygon class="bil-cloth" points="' + polyPoints + '"/>');
+
+    let grid = "";
+    for (let x = 1; x < W; x++) grid += "M" + X(x) + " " + Y(0) + "V" + Y(H);
+    for (let y = 1; y < H; y++) grid += "M" + X(0) + " " + Y(y) + "H" + X(W);
+    if (grid) out.push('<path class="bil-grid" clip-path="url(#' + id + ')" d="' + grid + '"/>');
+
+    /* Золота лінія — усі стани, де в потрібній посудині потрібне число. */
+    if (cfg.target !== undefined && cfg.target !== null && !cfg.exact) {
+      const t = cfg.target;
+      (cfg.targetIn || caps.map((_, i) => i)).forEach((v) => {
+        if (t > caps[v]) return;
+        let d = "";
+        let label = null;
+        if (v === plane.ax) {
+          d = "M" + X(t) + " " + Y(0) + "V" + Y(H);
+          label = [X(t) + 3, Y(H) + 11, "start"];
+        } else if (v === plane.ay) {
+          d = "M" + X(0) + " " + Y(t) + "H" + X(W);
+          label = [X(W) + 3, Y(t) + 4, "start"];
+        } else if (v === plane.big) {
+          const c = plane.total - t;
+          d = "M" + X(c) + " " + Y(0) + "L" + X(0) + " " + Y(c);
+        }
+        if (!d) return;
+        out.push('<path class="bil-goal" clip-path="url(#' + id + ')" d="' + d + '"/>');
+        if (label) out.push('<text class="bil-goal-label" x="' + label[0] + '" y="' + label[1] + '" text-anchor="' + label[2] + '">' + t + "</text>");
+      });
+    }
+
+    out.push('<polygon class="bil-rail" points="' + polyPoints + '"/>');
+
+    /* Лунки бортика: усі стани, де куля взагалі може зупинитися. */
+    let rail = "";
+    for (let x = 0; x <= W; x++) {
+      for (let y = 0; y <= H; y++) {
+        const state = stateAt(cfg, plane, x, y);
+        if (fits(cfg, state) && onRail(cfg, state)) rail += '<circle cx="' + X(x) + '" cy="' + Y(y) + '" r="1.8"/>';
+      }
+    }
+    out.push('<g class="bil-hole">' + rail + "</g>");
+
+    if (cfg.exact) {
+      const [gx, gy] = at(cfg.exact);
+      out.push('<text class="bil-star" x="' + gx + '" y="' + (gy + 5) + '" text-anchor="middle">★</text>');
+    }
+    (cfg.forbidden || []).forEach((state) => {
+      const [fx, fy] = at(state);
+      out.push('<path class="bil-forbidden" d="M' + (fx - 5) + " " + (fy - 5) + "L" + (fx + 5) + " " + (fy + 5) + "M" + (fx + 5) + " " + (fy - 5) + "L" + (fx - 5) + " " + (fy + 5) + '"/>');
+    });
+
+    const points = states.map(at);
+    if (points.length > 1) out.push('<polyline class="bil-path" points="' + points.map((p) => p.join(",")).join(" ") + '"/>');
+    points.forEach((p, k) => {
+      if (k) out.push('<circle class="bil-step" cx="' + p[0] + '" cy="' + p[1] + '" r="2.6"/>');
+    });
+
+    /* Номер кроку біля кожної зупинки — ті самі номери, що в таблиці. Підпис зсунуто до середини стола,
+       щоб не налазив на цифри осей; якщо куля стояла тут кілька разів — усі номери через кому. */
+    const stops = new Map();
+    points.forEach((p, k) => {
+      if (!k) return;
+      const spot = p.join(",");
+      stops.set(spot, (stops.get(spot) || []).concat(k));
+    });
+    const centerX = X(W / 2);
+    const centerY = Y(H / 2);
+    stops.forEach((numbers, spot) => {
+      const [px, py] = spot.split(",").map(Number);
+      const nx = px + Math.sign(centerX - px) * 8;
+      const ny = py + Math.sign(centerY - py) * 8 + 3.5;
+      out.push('<text class="bil-num" x="' + nx + '" y="' + ny + '" text-anchor="middle">' + numbers.join(",") + "</text>");
+    });
+    const here = points[points.length - 1];
+    if (ghost) {
+      const [gx, gy] = at(ghost);
+      const len = Math.hypot(gx - here[0], gy - here[1]) || 1;
+      const k = Math.min(1, (u * 1.1) / len);
+      const tip = [+(here[0] + (gx - here[0]) * k).toFixed(1), +(here[1] + (gy - here[1]) * k).toFixed(1)];
+      out.push('<line class="bil-ghost" x1="' + here[0] + '" y1="' + here[1] + '" x2="' + tip[0] + '" y2="' + tip[1] + '"/>');
+      out.push('<text class="bil-ghost-label" x="' + (tip[0] + 4) + '" y="' + (tip[1] - 4) + '">?</text>');
+    }
+    out.push('<circle class="bil-ball" cx="' + here[0] + '" cy="' + here[1] + '" r="6"/>');
+
+    const every = u >= 14 ? 1 : u >= 9 ? 2 : 5;
+    let ticks = "";
+    for (let x = 0; x <= W; x += every) ticks += '<text x="' + X(x) + '" y="' + (Y(0) + 13) + '" text-anchor="middle">' + x + "</text>";
+    for (let y = every; y <= H; y += every) ticks += '<text x="' + (X(0) - 5) + '" y="' + (Y(y) + 4) + '" text-anchor="end">' + y + "</text>";
+    out.push('<g class="bil-axis">' + ticks + "</g>");
+    out.push('<text class="bil-name" x="' + X(W) + '" y="' + (Y(0) + 28) + '" text-anchor="end">' + names[plane.ax] + " →</text>");
+    const midY = (Y(0) + Y(H)) / 2;
+    out.push('<text class="bil-name" x="11" y="' + midY + '" text-anchor="middle" transform="rotate(-90 11 ' + midY + ')">' + names[plane.ay] + " →</text>");
+    out.push("</svg>");
+    return out.join("");
+  }
+
+  function billiardCaption(cfg) {
+    const plane = planeOf(cfg);
+    const names = namesOf(cfg);
+    return (
+      "По горизонталі — " + names[plane.ax] + ", по вертикалі — " + names[plane.ay] + "." +
+      (plane.big >= 0 ? " У посудині на " + names[plane.big] + " — решта." : "") +
+      " Точка — стан, відрізок — крок."
+    );
+  }
+
+  /* Більярд для розвʼязання: ті самі ходи, що й у таблиці. */
+  function billiard(cfg, codes) {
+    const svg = billiardSVG(cfg, play(cfg, codes).map((entry) => entry.state));
+    return '<figure class="bil-figure">' + svg + "<figcaption>" + billiardCaption(cfg) + "</figcaption></figure>";
+  }
+
+  /* Карта ходів: ряд N — стани, до яких найшвидше дістатися рівно за N кроків.
+     Стрілки — лише в наступний ряд: повернення в уже відомий стан нічого не дає. */
+  function stateMap(cfg, depth) {
+    const caps = cfg.vessels;
+    const moves = allMoves(caps, Boolean(SOURCES[cfg.source]));
+    const goal = goalOf(cfg);
+    const start = startOf(cfg);
+    const key = (state) => state.join(",");
+    const layers = [[start]];
+    const layerOf = new Map([[key(start), 0]]);
+    const parent = new Map();
+    const edges = new Set();
+    for (let d = 0; d < depth; d++) {
+      const next = [];
+      layers[d].forEach((state) => {
+        moves.forEach((move) => {
+          const after = apply(caps, state, move);
+          if (!after) return;
+          const k = key(after);
+          if (!layerOf.has(k)) {
+            layerOf.set(k, d + 1);
+            parent.set(k, key(state));
+            next.push(after);
+          }
+          if (layerOf.get(k) === d + 1) edges.add(key(state) + ">" + k);
+        });
+      });
+      layers.push(next);
+    }
+
+    const route = new Set();
+    const found = layers.flat().find((state) => goal && goal(state));
+    for (let k = found ? key(found) : null; k; k = parent.get(k)) route.add(k);
+
+    const NW = 56;
+    const NH = 24;
+    const GAP = 12;
+    const ROW = 50;
+    const LEFT = 58;
+    const widest = Math.max(...layers.map((layer) => layer.length));
+    const w = LEFT + widest * NW + (widest - 1) * GAP + 8;
+    const h = layers.length * ROW;
+    const place = new Map();
+    layers.forEach((layer, d) => {
+      const span = layer.length * NW + (layer.length - 1) * GAP;
+      const left = LEFT + (widest * NW + (widest - 1) * GAP - span) / 2;
+      layer.forEach((state, n) => place.set(key(state), [left + n * (NW + GAP) + NW / 2, d * ROW + NH / 2 + 6]));
+    });
+
+    const out = ['<svg class="state-map" viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" role="img" aria-label="Карта ходів">'];
+    edges.forEach((edge) => {
+      const [a, b] = edge.split(">");
+      const [x1, y1] = place.get(a);
+      const [x2, y2] = place.get(b);
+      out.push('<line class="map-edge' + (route.has(a) && route.has(b) ? " on" : "") + '" x1="' + x1 + '" y1="' + (y1 + NH / 2) + '" x2="' + x2 + '" y2="' + (y2 - NH / 2) + '"/>');
+    });
+    layers.forEach((layer, d) => {
+      out.push('<text class="map-row" x="4" y="' + (d * ROW + NH / 2 + 10) + '">' + (d === 0 ? "старт" : d + " " + stepsWord(d)) + "</text>");
+      layer.forEach((state) => {
+        const k = key(state);
+        const [cx, cy] = place.get(k);
+        const cls = "map-node" + (goal && goal(state) ? " goal" : route.has(k) ? " on" : "");
+        out.push(
+          '<g class="' + cls + '" data-layer="' + d + '"><rect x="' + (cx - NW / 2) + '" y="' + (cy - NH / 2) + '" width="' + NW + '" height="' + NH + '" rx="12"/>' +
+            '<text x="' + cx + '" y="' + (cy + 4.5) + '" text-anchor="middle">(' + state.join("; ") + ")</text></g>"
+        );
+      });
+    });
+    out.push("</svg>");
+    return out.join("");
   }
 
   /* ---------- симулятор ---------- */
@@ -213,6 +484,8 @@ const JUGS = (function () {
     const ask = el("div", { class: "ask" });
     const counter = el("span", { class: "sim-stat" });
     const logBody = el("tbody");
+    const cloth = el("div", { class: "bil-table" });
+    const bilBox = planeOf(cfg) ? el("div", { class: "bil-box" }, cloth, el("div", { class: "bil-caption", text: billiardCaption(cfg) })) : null;
 
     const collectRow = collect ? el("div", { class: "jug-collect" }, el("span", { text: "Уже бачила:" })) : null;
     const chips = (collect || []).map((n) => {
@@ -384,7 +657,7 @@ const JUGS = (function () {
         text +=
           n <= best
             ? " Це найкоротший шлях — жодного зайвого кроку."
-            : " Найкоротший шлях — " + best + " " + stepsWord(best) + ". Порахуй рядок кола й спробуй інший бік.";
+            : " Найкоротший шлях — " + best + " " + stepsWord(best) + ". Спробуй крутити коло в інший бік.";
       }
       say("ok", text);
       render();
@@ -428,6 +701,11 @@ const JUGS = (function () {
           b.disabled = blocked || !apply(caps, now, parse(b.getAttribute("data-act")));
         });
       });
+
+      if (bilBox) {
+        const known = history.map((entry) => entry.state);
+        cloth.innerHTML = pending ? billiardSVG(cfg, known.slice(0, -1), now) : billiardSVG(cfg, known);
+      }
 
       counter.textContent = "Кроків: " + steps() + (limit ? " з " + limit : "");
       chips.forEach((chip, k) => chip.classList.toggle("on", found.has(collect[k])));
@@ -486,10 +764,7 @@ const JUGS = (function () {
         text: "Тисни кнопки під " + (source ? "відрами" : "посудинами") + ". Після переливання скажи, скільки де стало, — тоді можна лити далі.",
       }),
       el("div", { class: "sim-head" }, counter),
-      el("div", { class: "jugs-row" }, cols.map((col) => col.col)),
-      ask,
-      verdict,
-      collectRow,
+      el("div", { class: "jugs-main" }, el("div", { class: "jugs-row" }, cols.map((col) => col.col)), ask, verdict, collectRow, bilBox),
       el("div", { class: "toolbar" }, undoBtn, resetBtn),
       el("details", { class: "sim-logbox", open: "" }, el("summary", { text: "Таблиця кроків — як у підручнику" }), el("div", { class: "pour-wrap" }, logTable))
     );
@@ -604,5 +879,14 @@ const JUGS = (function () {
     return root;
   }
 
-  return { create: create, trainer: trainer, table: table, shortest: shortest, circleRow: circleRow, gcd: gcd };
+  return {
+    create: create,
+    trainer: trainer,
+    table: table,
+    billiard: billiard,
+    stateMap: stateMap,
+    shortest: shortest,
+    circleRow: circleRow,
+    gcd: gcd,
+  };
 })();

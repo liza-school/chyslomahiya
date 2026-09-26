@@ -674,7 +674,48 @@ const LESSONS = ["l01", "l02", "l03"];
     "(() => { const all = [...document.querySelectorAll('.block .pour-table')].filter(t => !t.closest('.sim'));" +
       " return all.length + '|' + all.filter(t => !t.querySelector('tbody tr:last-child td.hit')).length; })()"
   );
-  expect("усі 12 таблиць у розвʼязаннях закінчуються відповіддю", pourTables === "12|0", pourTables);
+  expect("усі 14 таблиць у розвʼязаннях закінчуються відповіддю", pourTables === "14|0", pourTables);
+
+  // Рядок кола — лише після задач 1–8, а домашні підказки без готового рядка: спершу дитина пробує сама.
+  const rowLater = await evaluate(
+    "(async () => { const row = [...document.querySelectorAll('.block.idea')].find(b => b.textContent.includes('Рядок кола: порахуй'));" +
+      " const p8 = document.querySelector('[data-problem=\"8\"]');" +
+      " const after = Boolean(row && p8 && (p8.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING));" +
+      " const leaks = [];" +
+      " for (const num of [2, 6, 7]) { const box = document.querySelector('[data-problem=\"' + num + '\"] .hint-box');" +
+      "   const candle = box.querySelector('.candle'); while (!candle.disabled) { candle.click(); await new Promise(r => setTimeout(r, 5)); }" +
+      "   const text = box.querySelector('.hint-lines').textContent.toLowerCase();" +
+      "   if (text.includes('рядок') || text.includes('рядку')) leaks.push(num); }" +
+      " return after + '|' + leaks.join(','); })()"
+  );
+  expect("рядок кола йде після задач, а в домашніх підказках його немає", rowLater === "true|", rowLater);
+
+  // Більярд: у кожному симуляторі свій стіл; у розвʼязаннях три малюнки; у Пуассона кут стола зрізаний.
+  const billiards = await evaluate(
+    "(() => { const sims = document.querySelectorAll('.sim.jugs').length;" +
+      " const live = document.querySelectorAll('.sim.jugs .billiard').length;" +
+      " const drawn = [...document.querySelectorAll('.bil-figure .billiard')].filter(b => !b.closest('.sim')).length;" +
+      " const p13 = document.querySelector('[data-problem=\"13\"] .bil-figure .bil-cloth');" +
+      " const corners = p13 ? p13.getAttribute('points').trim().split(/\\s+/).length : 0;" +
+      " const cross = document.querySelectorAll('[data-problem=\"12\"] .bil-figure .bil-forbidden').length;" +
+      " return sims + '|' + live + '|' + drawn + '|' + corners + '|' + cross; })()"
+  );
+  const [simCount, liveCount, drawnCount, cornerCount, crossCount] = billiards.split("|").map(Number);
+  expect(
+    "більярд є в кожному симуляторі, три малюнки в тексті, у Пуассона пʼятикутний стіл, у задачі 12 хрестик",
+    simCount > 10 && liveCount === simCount && drawnCount === 3 && cornerCount === 5 && crossCount === 1,
+    billiards
+  );
+
+  // Карта ходів для 5 і 3: сім рядів, четвірка — лише в шостому, до неї шість золотих стрілок.
+  const stateMap = await evaluate(
+    "(() => { const map = document.querySelector('[data-problem=\"14\"] .state-map'); if (!map) return 'карти немає';" +
+      " const rows = map.querySelectorAll('.map-row').length;" +
+      " const goal = map.querySelector('.map-node.goal');" +
+      " const early = [...map.querySelectorAll('.map-node')].filter(n => Number(n.getAttribute('data-layer')) < 6 && n.textContent.startsWith('(4;')).length;" +
+      " return rows + '|' + (goal ? goal.textContent + '@' + goal.getAttribute('data-layer') : 'немає') + '|' + early + '|' + map.querySelectorAll('.map-edge.on').length; })()"
+  );
+  expect("карта ходів доводить: раніше шостого кроку 4 л немає", stateMap === "7|(4; 3)@6|0|6", stateMap);
 
   const homework3 = await evaluate(
     "(() => { const card = document.querySelector('.block.homework');" +
@@ -693,14 +734,16 @@ const LESSONS = ["l01", "l02", "l03"];
         " const act = async (code) => { sim.querySelector('[data-act=\"' + code + '\"]').click(); await pause(20); };" +
         " const say = async (v) => { sim.querySelector('.ask-opt[data-v=\"' + v + '\"]').click(); await pause(20); };" +
         " await act('F0'); await act('P01');" +
+        " const ghost = sim.querySelectorAll('.bil-ghost').length + '/' + sim.querySelectorAll('.bil-step').length;" +
         " const asked = sim.querySelector('.ask-q') ? sim.querySelector('.ask-q').textContent : 'не спитали';" +
         " const lidded = sim.querySelector('.jug.lidded');" +
         " const lid = lidded ? getComputedStyle(lidded, '::after').content + ' ' + lidded.closest('.jug-col').querySelector('.jug-amt').textContent : 'без кришки';" +
         " const blocked = sim.querySelector('[data-act=\"E1\"]').disabled;" +
         " await say(3); const wrong = sim.querySelector('.sim-verdict').className;" +
         " await say(2); const taken = sim.querySelector('.ask-q') ? 'ще питає' : 'прийнято';" +
+        " const landed = sim.querySelectorAll('.bil-ghost').length + '/' + sim.querySelectorAll('.bil-step').length;" +
         " await act('E1'); await act('P01'); await act('F0'); await act('P01'); await say(4);" +
-        " return JSON.stringify({ asked, lid, blocked, wrong, taken," +
+        " return JSON.stringify({ asked, lid, blocked, wrong, taken, ghost, landed, steps: sim.querySelectorAll('.bil-step').length," +
         "   verdict: sim.querySelector('.sim-verdict').textContent, done: task.querySelector('.done-mark').textContent," +
         "   rows: sim.querySelectorAll('.pour-table tbody tr').length, goal: sim.querySelectorAll('.jug.goal').length }); })()"
     )
@@ -711,6 +754,11 @@ const LESSONS = ["l01", "l02", "l03"];
     solved2.asked + " | " + solved2.lid + " | " + solved2.blocked
   );
   expect("хибну відповідь не приймає, правильну — так", solved2.wrong === "sim-verdict no" && solved2.taken === "прийнято", solved2.wrong + " | " + solved2.taken);
+  expect(
+    "на більярді під кришкою видно лише напрямок, після відповіді куля стає на місце",
+    solved2.ghost === "1/1" && solved2.landed === "0/2" && solved2.steps === 6,
+    solved2.ghost + " → " + solved2.landed + ", кроків на столі: " + solved2.steps
+  );
   expect(
     "задача 2 розвʼязується за 6 кроків і зараховується",
     solved2.verdict.startsWith("Готово! 4 л у відрі на 5 л. Кроків: 6. Це найкоротший шлях") &&
