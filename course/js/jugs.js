@@ -393,7 +393,7 @@ const JUGS = (function () {
 
   /* Карта ходів: ряд N — стани, до яких найшвидше дістатися рівно за N кроків.
      Стрілки — лише в наступний ряд: повернення в уже відомий стан нічого не дає. */
-  function stateMap(cfg, depth) {
+  function stateMap(cfg, depth, view) {
     const caps = cfg.vessels;
     const moves = allMoves(caps, Boolean(SOURCES[cfg.source]));
     const goal = goalOf(cfg);
@@ -422,10 +422,12 @@ const JUGS = (function () {
     }
 
     const route = new Set();
-    const found = layers.flat().find((state) => goal && goal(state));
+    const found = (!view || view.finished) && layers.flat().find((state) => goal && goal(state) && (!view || view.visible.has(key(state))));
     for (let k = found ? key(found) : null; k; k = parent.get(k)) route.add(k);
 
-    const NW = 56;
+    if (view) layers.forEach((layer, d) => { layers[d] = layer.filter((state) => view.visible.has(key(state))); });
+
+    const NW = caps.length === 3 ? 88 : 64;
     const NH = 24;
     const GAP = 12;
     const ROW = 50;
@@ -443,6 +445,7 @@ const JUGS = (function () {
     const out = ['<svg class="state-map" viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" role="img" aria-label="Карта ходів">'];
     edges.forEach((edge) => {
       const [a, b] = edge.split(">");
+      if (!place.has(a) || !place.has(b)) return;
       const [x1, y1] = place.get(a);
       const [x2, y2] = place.get(b);
       out.push('<line class="map-edge' + (route.has(a) && route.has(b) ? " on" : "") + '" x1="' + x1 + '" y1="' + (y1 + NH / 2) + '" x2="' + x2 + '" y2="' + (y2 - NH / 2) + '"/>');
@@ -452,7 +455,7 @@ const JUGS = (function () {
       layer.forEach((state) => {
         const k = key(state);
         const [cx, cy] = place.get(k);
-        const cls = "map-node" + (goal && goal(state) ? " goal" : route.has(k) ? " on" : "");
+        const cls = "map-node" + (goal && goal(state) ? " goal" : route.has(k) ? " on" : "") + (view && view.current === k ? " here" : "");
         out.push(
           '<g class="' + cls + '" data-layer="' + d + '"><rect x="' + (cx - NW / 2) + '" y="' + (cy - NH / 2) + '" width="' + NW + '" height="' + NH + '" rx="12"/>' +
             '<text x="' + cx + '" y="' + (cy + 4.5) + '" text-anchor="middle">(' + state.join("; ") + ")</text></g>"
@@ -718,6 +721,22 @@ const JUGS = (function () {
 
   /* ---------- симулятор ---------- */
 
+  function circleStep(cfg, state) {
+    const { donor, receiver } = cfg.coach;
+    const open = Boolean(SOURCES[cfg.source]);
+    if (!state[donor]) return {
+      code: open ? "F" + donor : "P0" + donor,
+      rule: 0,
+      reason: "Давач на " + cfg.vessels[donor] + " л порожній — набери його" + (open ? "." : " з великої посудини, скільки влізе або скільки лишилося в запасі."),
+    };
+    if (state[receiver] === cfg.vessels[receiver]) return {
+      code: open ? "E" + receiver : "P" + receiver + "0",
+      rule: 1,
+      reason: "Приймач на " + cfg.vessels[receiver] + " л повний — вилий його" + (open ? "." : " назад у велику посудину."),
+    };
+    return { code: "P" + donor + receiver, rule: 2, reason: "У давача є рідина, у приймача є місце — переливай до порожнього або повного." };
+  }
+
   function create(cfg, onSolve) {
     const caps = cfg.vessels;
     const names = namesOf(cfg);
@@ -727,6 +746,7 @@ const JUGS = (function () {
     const limit = cfg.limit || 0;
     const where = cfg.where || "відрі";
     const best = shortest(cfg);
+    const coach = cfg.coach;
 
     let history = []; // [{ state, move }], history[0] — початок
     let pending = null; // { i, answer, why } — чекаємо, доки дитина порахує
@@ -739,6 +759,12 @@ const JUGS = (function () {
     const logBody = el("tbody");
     const cloth = el("div", { class: "bil-table" });
     const bilBox = planeOf(cfg) ? el("div", { class: "bil-box" }, cloth, el("div", { class: "bil-caption", text: billiardCaption(cfg) })) : null;
+    const coachNote = coach ? el("div", { class: "coach-note", "aria-live": "polite" }) : null;
+    const coachRules = coach ? ["Давач порожній? Набери його.", "Інакше приймач повний? Вилий його.", "Інакше переливай до порожнього або повного."].map((text) => el("li", { text: text })) : [];
+    const coachPanel = coach ? el("div", { class: "jug-coach" },
+      el("b", { text: "Давач: " + names[coach.donor] + ". Приймач: " + names[coach.receiver] + "." }),
+      el("div", { text: "Спершу перевір мету. Потім читай запитання згори вниз:" }),
+      el("ol", {}, coachRules), coachNote) : null;
 
     const collectRow = collect ? el("div", { class: "jug-collect" }, el("span", { text: "Уже бачила:" })) : null;
     const chips = (collect || []).map((n) => {
@@ -800,14 +826,26 @@ const JUGS = (function () {
       const before = current();
       const after = apply(caps, before, move);
       if (!after) return;
+      if (coach && code !== circleStep(cfg, before).code) {
+        say("no", "Цей хід дозволений, але зараз тренуємо обране коло. " + circleStep(cfg, before).reason);
+        return;
+      }
       history.push({ state: after, move: move });
       pending = question(move, before, after);
+      if (coach && coach.mode === "show" && pending) {
+        pending.checks = [
+          { text: "Скільки вільного місця у посудині на " + caps[move.j] + " л?", answer: caps[move.j] - before[move.j], max: caps[move.j], why: "Від місткості " + caps[move.j] + " відніми те, що вже було: " + before[move.j] + "." },
+          { text: "Скільки літрів переллється?", answer: before[move.i] - after[move.i], max: Math.max(...caps), why: "Порівняй, скільки є в давача (" + before[move.i] + ") і скільки вільного місця (" + (caps[move.j] - before[move.j]) + "). Переллється менше з цих чисел." },
+          { text: "Скільки літрів тепер у " + where + " на " + caps[pending.i] + " л?", answer: pending.answer, max: caps[pending.i], why: pending.why },
+        ];
+        pending.checkIndex = 0;
+      }
       say("", "");
       if (pending) {
         showAsk();
         render();
       } else {
-        settle("");
+        settle(coach ? narrate(cfg, before, after, move) : "");
       }
     }
 
@@ -836,9 +874,11 @@ const JUGS = (function () {
 
     function showAsk() {
       ask.textContent = "";
-      ask.append(el("div", { class: "ask-q", text: "Скільки літрів тепер у " + where + " на " + caps[pending.i] + " л?" }));
+      const check = pending.checks && pending.checks[pending.checkIndex];
+      if (check) ask.append(el("div", { class: "coach-count", text: "Рахуємо: " + (pending.checkIndex + 1) + " з 3" }));
+      ask.append(el("div", { class: "ask-q", text: check ? check.text : "Скільки літрів тепер у " + where + " на " + caps[pending.i] + " л?" }));
       const row = el("div", { class: "ask-opts" });
-      for (let v = 0; v <= caps[pending.i]; v++) {
+      for (let v = 0; v <= (check ? check.max : caps[pending.i]); v++) {
         const option = el("button", { class: "ask-opt num", type: "button", text: String(v), "data-v": String(v) });
         option.addEventListener("click", () => answer(v, option));
         row.append(option);
@@ -848,9 +888,16 @@ const JUGS = (function () {
 
     function answer(v, option) {
       if (!pending) return;
-      if (v !== pending.answer) {
+      const check = pending.checks && pending.checks[pending.checkIndex];
+      if (v !== (check ? check.answer : pending.answer)) {
         option.classList.add("wrong");
-        say("no", "Ні. " + pending.why);
+        say("no", "Ні. " + (check ? check.why : pending.why));
+        return;
+      }
+      if (check && pending.checkIndex < pending.checks.length - 1) {
+        pending.checkIndex++;
+        say("ok", "Так. Тепер наступне запитання.");
+        showAsk();
         return;
       }
       const i = pending.i;
@@ -910,7 +957,7 @@ const JUGS = (function () {
         text +=
           n <= best
             ? " Це найкоротший шлях — жодного зайвого кроку."
-            : " Найкоротший шлях — " + best + " " + stepsWord(best) + ". Спробуй крутити коло в інший бік.";
+            : " Найкоротший шлях — " + best + " " + stepsWord(best) + ". " + (source ? "Спробуй крутити коло в інший бік." : "Карта ходів допоможе знайти коротший шлях.");
       }
       say("ok", text);
       render();
@@ -942,6 +989,11 @@ const JUGS = (function () {
       const now = current();
       const hits = solved && !collect ? hitCells(cfg, now) : new Set();
       const blocked = solved || Boolean(pending) || Boolean(limit && steps() >= limit);
+      const next = coach && !blocked ? circleStep(cfg, now) : null;
+      if (coach) {
+        coachRules.forEach((rule, i) => rule.classList.toggle("active", Boolean(next && coach.mode === "show" && next.rule === i)));
+        coachNote.textContent = solved ? "Мету досягнуто. Можна переходити до наступної вправи." : pending ? "Хід обрано. Порахуй: місце → переллється → залишиться." : coach.mode === "show" ? next ? next.reason : "" : "Обери хід за памʼяткою. Підсвічування вже немає — тепер вирішуєш ти.";
+      }
       cols.forEach((col, i) => {
         const hidden = Boolean(pending) && pending.i === i;
         col.jug.classList.toggle("lidded", hidden);
@@ -952,6 +1004,7 @@ const JUGS = (function () {
         col.amount.classList.toggle("unknown", hidden);
         col.buttons.forEach((b) => {
           b.disabled = blocked || !apply(caps, now, parse(b.getAttribute("data-act")));
+          b.classList.toggle("coach-next", Boolean(next && coach.mode === "show" && b.getAttribute("data-act") === next.code));
         });
       });
 
@@ -993,6 +1046,7 @@ const JUGS = (function () {
         (source ? "Відра" : "Посудини") + ": " + names.map((name) => "<b>" + name + "</b>").join(names.length === 2 ? " і " : ", ") + ", без поділок.";
       if (source) text += " " + source.place;
       if (collect) text += " Збери всі числа від " + collect[0] + " до " + collect[collect.length - 1] + ".";
+      else if (cfg.exact) text += " Треба по порядку: <b>" + cfg.exact.join("; ") + " л</b>.";
       else if (goal) text += " Треба: <b>" + cfg.target + " л</b> в одному з відер.";
       text += limit ? " Кроків — не більше <b>" + limit + "</b>." : " Кроків скільки завгодно.";
       return text;
@@ -1011,17 +1065,165 @@ const JUGS = (function () {
     const root = el(
       "div",
       { class: "sim jugs" + (cfg.liquid ? " liquid-" + cfg.liquid : "") },
-      el("div", { class: "sim-task", html: cfg.intro || autoIntro() }),
-      el("div", {
+      (!coach || cfg.intro) ? el("div", { class: "sim-task", html: cfg.intro || autoIntro() }) : null,
+      coach ? null : el("div", {
         class: "sim-hint",
         text: "Тисни кнопки під " + (source ? "відрами" : "посудинами") + ". Після переливання скажи, скільки де стало, — тоді можна лити далі.",
       }),
       el("div", { class: "sim-head" }, counter),
+      coachPanel,
       el("div", { class: "jugs-main" }, el("div", { class: "jugs-row" }, cols.map((col) => col.col)), ask, verdict, collectRow, bilBox),
       el("div", { class: "toolbar" }, undoBtn, resetBtn),
       el("details", { class: "sim-logbox", open: "" }, el("summary", { text: "Таблиця кроків — як у підручнику" }), el("div", { class: "pour-wrap" }, logTable))
     );
 
+    if (goal) {
+      const map = el("details", { class: "jug-map-help" }, el("summary", { text: "Побудувати карту ходів" }));
+      map.addEventListener("toggle", () => {
+        if (map.open && !map.querySelector(".map-lab")) map.append(explore(cfg));
+      });
+      root.append(map);
+    }
+
+    reset();
+    return root;
+  }
+
+  /* ---------- дитина будує карту: усі ходи, кожен новий стан лише раз ---------- */
+
+  function explore(cfg, onSolve) {
+    const caps = cfg.vessels;
+    const names = namesOf(cfg);
+    const source = SOURCES[cfg.source];
+    const moves = allMoves(caps, Boolean(source));
+    const goal = goalOf(cfg);
+    let nodes, seen, cursor, checked, pending, ended, found;
+    const board = el("div", { class: "map-lab-board" });
+    const picture = el("div", { class: "map-preview" });
+    const currentLabel = el("div", { class: "map-current" });
+    const actions = el("div", { class: "map-actions" });
+    const question = el("div", { class: "map-question", "aria-live": "polite" });
+    const feedback = el("div", { class: "sim-verdict", "aria-live": "polite" });
+    const conclusion = el("div", { class: "map-conclusion" });
+
+    function say(ok, text) {
+      feedback.className = "sim-verdict " + (ok ? "ok" : "no");
+      feedback.textContent = text;
+    }
+
+    function draw() {
+      const node = nodes[cursor];
+      const depth = Math.max(...nodes.map((entry) => entry.depth));
+      board.innerHTML = stateMap(cfg, depth, { visible: new Set(seen.keys()), current: node.state.join(","), finished: ended });
+      picture.innerHTML = billiardSVG(cfg, [node.state]);
+      currentLabel.textContent = "Перевіряємо (" + node.state.join("; ") + "). Ряд " + node.depth + ".";
+      actions.textContent = "";
+      const legal = moves.filter((move) => apply(caps, node.state, move));
+      legal.forEach((move) => {
+        const index = moves.indexOf(move);
+        const button = el("button", { class: "jug-btn", type: "button", "data-map-move": String(index), text: (checked.has(index) ? "✓ " : "") + describe(move, names, source) });
+        button.disabled = ended || Boolean(pending) || checked.has(index);
+        button.addEventListener("click", () => {
+          pending = { index: index, state: apply(caps, node.state, move), move: move };
+          feedback.textContent = "";
+          showQuestion();
+          draw();
+        });
+        actions.append(button);
+      });
+      next.disabled = ended || Boolean(pending) || checked.size !== legal.length;
+      next.textContent = "Усі ходи перевірено → наступна картка";
+      status.textContent = "Ходів із цієї картки: " + checked.size + " з " + legal.length + ". Карток на карті: " + nodes.length + ".";
+      root.setAttribute("data-map-nodes", String(nodes.length));
+      root.setAttribute("data-map-ended", String(ended));
+    }
+
+    function showQuestion() {
+      question.textContent = "";
+      question.append(el("p", { text: "Після цього ходу: (" + pending.state.join("; ") + "). Порівняй усі числа з картками на карті." }));
+      [true, false].forEach((isNew) => {
+        const button = el("button", { class: "kind-btn", type: "button", "data-map-new": String(isNew), text: isNew ? "Новий стан — додати" : "Такий стан уже є" });
+        button.addEventListener("click", () => classify(isNew));
+        question.append(button);
+      });
+    }
+
+    function classify(isNew) {
+      if (!pending) return;
+      const key = pending.state.join(",");
+      if (isNew === seen.has(key)) {
+        say(false, isNew ? "Ця картка вже є. Звір увесь рядок чисел — повтор не додаємо." : "Такого рядка ще немає. Одна знайома цифра не означає, що стан повторився.");
+        return;
+      }
+      checked.add(pending.index);
+      if (isNew) {
+        const node = { state: pending.state, depth: nodes[cursor].depth + 1, parent: cursor, move: pending.move };
+        seen.set(key, nodes.length);
+        nodes.push(node);
+        say(true, "Нова картка — у ряд " + node.depth + ". Стрілка означає один хід.");
+        if (goal(node.state)) found = nodes.length - 1;
+      } else {
+        say(true, "Так. Цей стан уже був. Із нього будуть ті самі ходи, тому повтор не потрібен.");
+      }
+      pending = null;
+      question.textContent = "";
+      if (found >= 0) finish();
+      draw();
+    }
+
+    function finish() {
+      ended = true;
+      conclusion.textContent = "";
+      const path = [];
+      for (let i = found; i >= 0; i = nodes[i].parent) path.unshift(nodes[i]);
+      const reason = found >= 0
+        ? "Мета вперше зʼявилася в ряду " + nodes[found].depth + ". У попередніх рядах її немає. Що це доводить?"
+        : "Перевірено всі ходи з усіх " + nodes.length + " карток. Нових карток немає, мети немає. Що це доводить?";
+      conclusion.append(el("p", { text: reason }));
+      [true, false].forEach((reachable) => {
+        const button = el("button", { class: "kind-btn", type: "button", "data-map-reachable": String(reachable), text: reachable ? "Знайдено найкоротший шлях" : "Розвʼязку немає" });
+        button.addEventListener("click", () => {
+          if (reachable !== (found >= 0)) {
+            say(false, found >= 0 ? "Мета є на карті. Ми дійшли до неї, перевіряючи ряди по черзі." : "До мети не дійшли, а нових станів більше немає. Іншого шляху не лишилося.");
+            return;
+          }
+          say(true, found >= 0 ? "Доведено: найкоротший шлях — " + nodes[found].depth + " " + stepsWord(nodes[found].depth) + "." : "Доведено: розвʼязку немає. Усі досяжні стани перевірено.");
+          conclusion.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+          if (path.length) conclusion.append(el("div", { class: "map-route", text: path.map((n) => "(" + n.state.join("; ") + ")").join(" → ") }));
+          if (onSolve) onSolve();
+        });
+        conclusion.append(button);
+      });
+    }
+
+    function reset() {
+      const start = startOf(cfg);
+      nodes = [{ state: start, depth: 0, parent: -1, move: null }];
+      seen = new Map([[start.join(","), 0]]);
+      cursor = 0;
+      checked = new Set();
+      pending = null;
+      ended = false;
+      found = goal(start) ? 0 : -1;
+      question.textContent = "";
+      feedback.textContent = "";
+      conclusion.textContent = "";
+      if (found >= 0) finish();
+      draw();
+    }
+
+    const status = el("div", { class: "sim-stat" });
+    const next = el("button", { class: "btn map-next", type: "button", onclick: () => {
+      if (next.disabled) return;
+      if (cursor + 1 === nodes.length) finish();
+      else { cursor++; checked = new Set(); feedback.textContent = ""; }
+      draw();
+    } });
+    const root = el("div", { class: "sim map-lab" },
+      el("p", { class: "sim-task", text: "Порядок посудин: " + names.join("; ") + ". Мета: " + (cfg.exact ? "(" + cfg.exact.join("; ") + ")." : cfg.target + " л" + (cfg.targetIn ? " у посудині " + cfg.targetIn.map((i) => names[i]).join(" або ") : " в одній із посудин") + ".") }),
+      el("p", { class: "sim-hint", text: "Перевір усі доступні ходи з картки. Новий стан додавай, повтор пропускай. Далі бери наступну картку: спершу весь ряд, потім наступний. Набрати повне або вилити порожнє нічого не змінює — таких кнопок немає." }),
+      el("div", { class: "map-workbench" }, el("div", {}, currentLabel, picture, actions, question, feedback, status, next, conclusion), board),
+      el("button", { class: "ghost-btn map-reset", type: "button", text: "Почати карту заново", onclick: reset }));
     reset();
     return root;
   }
@@ -1139,6 +1341,7 @@ const JUGS = (function () {
     billiard: billiard,
     stateMap: stateMap,
     walk: walk,
+    explore: explore,
     shortest: shortest,
     circleRow: circleRow,
     gcd: gcd,

@@ -709,7 +709,7 @@ const LESSONS = ["l01", "l02", "l03"];
 
   // Карта ходів для 5 і 3: сім рядів, четвірка — лише в шостому, до неї шість золотих стрілок.
   const stateMap = await evaluate(
-    "(() => { const map = document.querySelector('[data-problem=\"14\"] .state-map'); if (!map) return 'карти немає';" +
+    "(() => { const map = document.querySelector('[data-problem=\"14\"] .bil-figure .state-map'); if (!map) return 'карти немає';" +
       " const rows = map.querySelectorAll('.map-row').length;" +
       " const goal = map.querySelector('.map-node.goal');" +
       " const early = [...map.querySelectorAll('.map-node')].filter(n => Number(n.getAttribute('data-layer')) < 6 && n.textContent.startsWith('(4;')).length;" +
@@ -824,7 +824,7 @@ const LESSONS = ["l01", "l02", "l03"];
 
   // Пісочниця: коло «мале у велике» для 3 і 7 проходить усі числа від 1 до 7.
   const collected = await evaluate(
-    "(async () => { const block = document.querySelector('.block.jugs-block'); const sim = block.querySelector('.sim');" +
+    "(async () => { const block = document.querySelector('[data-exercise=\"sand\"]'); const sim = block.querySelector('.sim');" +
       " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
       " const answer = async () => { for (const o of [...sim.querySelectorAll('.ask-opt')]) { o.click(); await pause(6);" +
       "   if (!sim.querySelector('.ask-opt')) return; } };" +
@@ -875,6 +875,8 @@ const LESSONS = ["l01", "l02", "l03"];
     lesson3Progress.slice(0, 100)
   );
 
+  await require("./check-teaching.js")({ evaluate, expect, go });
+
   /* ---------- телефон і планшет ---------- */
 
   const SCREENS = [
@@ -882,6 +884,7 @@ const LESSONS = ["l01", "l02", "l03"];
     { name: "телефон 360", width: 360, height: 800 },
     { name: "телефон", width: 390, height: 844 },
     { name: "планшет", width: 820, height: 1180 },
+    { name: "компʼютер", width: 1366, height: 900 },
   ];
 
   for (const id of LESSONS) {

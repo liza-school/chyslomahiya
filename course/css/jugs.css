@@ -272,3 +272,33 @@
 .walk-water { fill: #4a9ad6; }
 .walk-label { fill: var(--cream); font: 600 11.5px var(--sans); }
 .walk-star { fill: #f4cf80; font: 700 14px var(--sans); }
+
+/* ---------- навчаємо обирати хід, потім прибираємо допомогу ---------- */
+.jug-coach { border: 1px solid var(--gold-dim); border-radius: 12px; padding: 12px 16px; margin: 12px 0; background: rgba(217,164,65,.06); }
+.jug-coach > b { display: block; color: var(--gold-hi); margin-bottom: 6px; }
+.jug-coach ol { margin: 10px 0; padding-left: 24px; }
+.jug-coach li { padding: 5px 6px; border-radius: 6px; }
+.jug-coach li.active { background: rgba(143,208,245,.18); color: #c1e7ff; font-weight: 700; }
+.coach-note { font-size: 14px; color: var(--gold-hi); }
+.coach-count { font: 600 13px var(--sans); color: var(--gold); margin-bottom: 6px; }
+.jug-btn.coach-next { border-color: #8fd0f5; box-shadow: 0 0 0 2px rgba(143,208,245,.3); background: rgba(143,208,245,.18); }
+.jug-map-help { margin-top: 16px; border-top: 1px solid var(--gold-dim); padding-top: 12px; }
+.jug-map-help > summary { color: var(--gold-hi); cursor: pointer; }
+.map-lab { margin-top: 12px; }
+.map-workbench { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+.map-workbench > * { min-width: 0; }
+.map-current { font: 600 16px/1.5 var(--sans); color: var(--gold-hi); margin: 8px 0; }
+.map-preview { margin: 12px 0; }
+.map-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.map-actions .jug-btn { min-height: 40px; white-space: normal; }
+.map-question .kind-btn, .map-conclusion .kind-btn { margin: 4px 6px 4px 0; white-space: normal; }
+.map-next { margin: 12px 0; white-space: normal; max-width: 100%; }
+.map-route { font: 600 14px/1.8 var(--sans); overflow-wrap: anywhere; margin: 12px 0; }
+.map-reset { margin-top: 12px; }
+.block.problem .map-reset { color: var(--gold-hi); border-color: var(--gold-dim); }
+.map-lab-board { background: #eee0bf; border-radius: 12px; padding: 12px 6px; align-self: start; }
+.map-lab-board .state-map { width: 100%; max-width: 440px; }
+.map-node.here rect { stroke: #1e608e; stroke-width: 3; }
+@media (min-width: 800px) {
+  .map-workbench { grid-template-columns: minmax(0, 1fr) minmax(250px, .9fr); }
+}

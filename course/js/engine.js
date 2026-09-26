@@ -196,6 +196,7 @@ const COURSE = (function () {
 
       if (b.sim) body.push(SCALES.create(b.sim, solve));
       if (b.jugs) body.push(JUGS.create(b.jugs, solve));
+      if (b.map) body.push(JUGS.explore(b.map, solve));
 
       if (b.hints && b.hints.length) {
         body.push(hintLadder(b.hints));
@@ -272,16 +273,20 @@ const COURSE = (function () {
     /* Відра без поділок окремим блоком (без задачі). */
     jugs(b, ctx) {
       const doneMark = el("span", { class: "done-mark", text: isDone(ctx.key) ? "✓" : "" });
-      const sim = JUGS.create(b, () => {
+      const sim = (b.type === "jugmap" ? JUGS.explore : JUGS.create)(b, () => {
         doneMark.textContent = "✓";
         markDone(ctx.key);
       });
       return el(
         "section",
-        { class: "block jugs-block" },
+        { class: "block jugs-block", "data-exercise": b.id },
         el("div", { class: "block-head" }, el("span", { class: "tag", text: TAGS.jugs }), el("span", { text: b.title || "Відра без поділок" }), doneMark),
         el("div", { class: "block-body" }, b.html ? el("div", { html: b.html }) : null, sim)
       );
+    },
+
+    jugmap(b, ctx) {
+      return BLOCKS.jugs(b, ctx);
     },
 
     /* Граф станів простого прикладу: крок за кроком, обидві доріжки. Нічого не зараховує — це картинка. */
@@ -512,7 +517,7 @@ const COURSE = (function () {
 
   /* ---------- прогрес ---------- */
 
-  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer"]);
+  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap"]);
 
   function blockKey(lesson, block, index) {
     return lesson.id + ":" + (block.id || block.type + index);
