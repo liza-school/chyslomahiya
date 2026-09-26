@@ -93,6 +93,8 @@ const COURSE = (function () {
     problem: "задача",
     scales: "терези",
     trainer: "тренажер",
+    jugs: "відра",
+    jugtrainer: "тренажер",
     homework: "домашнє",
   };
 
@@ -182,17 +184,17 @@ const COURSE = (function () {
         b.caption ? el("figcaption", { html: b.caption }) : null
       ),
 
-    /* Задача: умова, за потреби симулятор терезів, підказка, розвʼязання, самоперевірка. */
+    /* Задача: умова, за потреби симулятор (терези або відра), підказка, розвʼязання, самоперевірка. */
     problem(b, ctx) {
       const doneMark = el("span", { class: "done-mark", text: isDone(ctx.key) ? "✓" : "" });
       const body = [el("div", { html: b.question })];
+      const solve = () => {
+        doneMark.textContent = "✓";
+        markDone(ctx.key);
+      };
 
-      if (b.sim) {
-        body.push(SCALES.create(b.sim, () => {
-          doneMark.textContent = "✓";
-          markDone(ctx.key);
-        }));
-      }
+      if (b.sim) body.push(SCALES.create(b.sim, solve));
+      if (b.jugs) body.push(JUGS.create(b.jugs, solve));
 
       if (b.hints && b.hints.length) {
         body.push(hintLadder(b.hints));
@@ -203,7 +205,7 @@ const COURSE = (function () {
         body.push(el("details", {}, el("summary", { text: "Розвʼязання" }), el("div", { html: b.solution })));
       }
 
-      if (!b.sim) {
+      if (!b.sim && !b.jugs) {
         const verdict = el("div", { class: "verdict" });
         const selfBtn = el("button", { class: "btn", text: "Я розвʼязала ✓" });
         selfBtn.addEventListener("click", () => {
@@ -262,6 +264,36 @@ const COURSE = (function () {
         "section",
         { class: "block trainer-block" },
         el("div", { class: "block-head" }, el("span", { class: "tag", text: TAGS.trainer }), el("span", { text: b.title || "Тренажер" }), doneMark),
+        el("div", { class: "block-body" }, b.html ? el("div", { html: b.html }) : null, node)
+      );
+    },
+
+    /* Відра без поділок окремим блоком (без задачі). */
+    jugs(b, ctx) {
+      const doneMark = el("span", { class: "done-mark", text: isDone(ctx.key) ? "✓" : "" });
+      const sim = JUGS.create(b, () => {
+        doneMark.textContent = "✓";
+        markDone(ctx.key);
+      });
+      return el(
+        "section",
+        { class: "block jugs-block" },
+        el("div", { class: "block-head" }, el("span", { class: "tag", text: TAGS.jugs }), el("span", { text: b.title || "Відра без поділок" }), doneMark),
+        el("div", { class: "block-body" }, b.html ? el("div", { html: b.html }) : null, sim)
+      );
+    },
+
+    /* Тренажер переливань: будь-які два відра й скільки треба — на вибір дитини. */
+    jugtrainer(b, ctx) {
+      const doneMark = el("span", { class: "done-mark", text: isDone(ctx.key) ? "✓" : "" });
+      const node = JUGS.trainer(b, () => {
+        doneMark.textContent = "✓";
+        markDone(ctx.key);
+      });
+      return el(
+        "section",
+        { class: "block trainer-block" },
+        el("div", { class: "block-head" }, el("span", { class: "tag", text: TAGS.jugtrainer }), el("span", { text: b.title || "Тренажер" }), doneMark),
         el("div", { class: "block-body" }, b.html ? el("div", { html: b.html }) : null, node)
       );
     },
@@ -470,7 +502,7 @@ const COURSE = (function () {
 
   /* ---------- прогрес ---------- */
 
-  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer"]);
+  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer"]);
 
   function blockKey(lesson, block, index) {
     return lesson.id + ":" + (block.id || block.type + index);

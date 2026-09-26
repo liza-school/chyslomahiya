@@ -85,7 +85,7 @@ function connect(url) {
   return { send, open, events };
 }
 
-const LESSONS = ["l01", "l02"];
+const LESSONS = ["l01", "l02", "l03"];
 
 (async () => {
   const cdp = connect(await browserWs());
@@ -139,7 +139,7 @@ const LESSONS = ["l01", "l02"];
     expect("кожна задача в " + id + " має розвʼязання", solutions === problems, solutions + " з " + problems);
 
     const sims = await evaluate("document.querySelectorAll('.sim').length");
-    expect("у " + id + " є інтерактивні терези", sims >= 3, "симуляторів: " + sims);
+    expect("у " + id + " є інтерактивні симулятори", sims >= 3, "симуляторів: " + sims);
   }
 
   /* ---------- обовʼязковий зміст ---------- */
@@ -647,6 +647,163 @@ const LESSONS = ["l01", "l02"];
 
   const mini = await evaluate("document.getElementById('progressMini').textContent");
   expect("лічильник угорі рахує", /^[1-9]/.test(mini), mini);
+
+  /* ---------- відра без поділок (l03) ---------- */
+
+  await go("#/l/l03");
+
+  // Найкоротші шляхи — пошук ушир. Приклади зі сторінки 11 і домашні задачі мають збігатися з таблицями.
+  const pourBest = await evaluate(
+    "[" +
+      "JUGS.shortest({ vessels: [7, 10], source: 'lake', target: 8 })," +
+      "JUGS.shortest({ vessels: [14, 9, 5], start: [14, 0, 0], target: 3, targetIn: [1, 2] })," +
+      "JUGS.shortest({ vessels: [5, 3], source: 'tap', target: 4 })," +
+      "JUGS.shortest({ vessels: [5, 9], source: 'river', target: 3 })," +
+      "JUGS.shortest({ vessels: [4, 9], source: 'river', target: 7 })," +
+      "JUGS.shortest({ vessels: [8, 5, 3], start: [8, 0, 0], target: 4 })," +
+      "JUGS.shortest({ vessels: [6, 9], source: 'lake', target: 4 })" +
+      "].join(',')"
+  );
+  expect("найкоротші шляхи: 12, 8, 6, 8, 10, 6 і неможливо для 6/9 → 4", pourBest === "12,8,6,8,10,6,-1", pourBest);
+
+  const circleRows = await evaluate("[JUGS.circleRow(3, 7), JUGS.circleRow(9, 5), JUGS.circleRow(6, 9)].map(r => r.join(' ')).join('|')");
+  expect("рядок кола рахується правильно", circleRows === "3 6 2 5 1 4|5 1 6 2 7 3 8 4|6 3", circleRows);
+
+  // Таблиці розвʼязань рахує рушій; кожна мусить закінчитися відповіддю, підсвіченою в останньому рядку.
+  const pourTables = await evaluate(
+    "(() => { const all = [...document.querySelectorAll('.block .pour-table')].filter(t => !t.closest('.sim'));" +
+      " return all.length + '|' + all.filter(t => !t.querySelector('tbody tr:last-child td.hit')).length; })()"
+  );
+  expect("усі 12 таблиць у розвʼязаннях закінчуються відповіддю", pourTables === "12|0", pourTables);
+
+  const homework3 = await evaluate(
+    "(() => { const card = document.querySelector('.block.homework');" +
+      " const listed = [...card.querySelectorAll('.hw-num')].map(n => n.textContent).join(',');" +
+      " const marked = [...document.querySelectorAll('.block.problem.homework-task')].map(p => p.getAttribute('data-problem')).join(',');" +
+      " return listed + '|' + marked + '|' + document.querySelectorAll('.block.problem .hw-badge').length; })()"
+  );
+  expect("домашнє l03 позначене: 2, 6, 7", homework3 === "2,6,7|2,6,7|3", homework3);
+
+  /* Домашня задача 2 руками: після переливання до краю відро накривається кришкою, лити далі не можна,
+     хибна відповідь не приймається, правильна — відкриває відро. Шість кроків — найкоротший шлях. */
+  const solved2 = JSON.parse(
+    await evaluate(
+      "(async () => { const task = document.querySelector('[data-problem=\"2\"]'); const sim = task.querySelector('.sim');" +
+        " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+        " const act = async (code) => { sim.querySelector('[data-act=\"' + code + '\"]').click(); await pause(20); };" +
+        " const say = async (v) => { sim.querySelector('.ask-opt[data-v=\"' + v + '\"]').click(); await pause(20); };" +
+        " await act('F0'); await act('P01');" +
+        " const asked = sim.querySelector('.ask-q') ? sim.querySelector('.ask-q').textContent : 'не спитали';" +
+        " const lidded = sim.querySelector('.jug.lidded');" +
+        " const lid = lidded ? getComputedStyle(lidded, '::after').content + ' ' + lidded.closest('.jug-col').querySelector('.jug-amt').textContent : 'без кришки';" +
+        " const blocked = sim.querySelector('[data-act=\"E1\"]').disabled;" +
+        " await say(3); const wrong = sim.querySelector('.sim-verdict').className;" +
+        " await say(2); const taken = sim.querySelector('.ask-q') ? 'ще питає' : 'прийнято';" +
+        " await act('E1'); await act('P01'); await act('F0'); await act('P01'); await say(4);" +
+        " return JSON.stringify({ asked, lid, blocked, wrong, taken," +
+        "   verdict: sim.querySelector('.sim-verdict').textContent, done: task.querySelector('.done-mark').textContent," +
+        "   rows: sim.querySelectorAll('.pour-table tbody tr').length, goal: sim.querySelectorAll('.jug.goal').length }); })()"
+    )
+  );
+  expect(
+    "переливання до краю питає, скільки лишилося, і ховає рівень під кришку",
+    solved2.asked === "Скільки літрів тепер у відрі на 5 л?" && solved2.lid === '"?" ?' && solved2.blocked,
+    solved2.asked + " | " + solved2.lid + " | " + solved2.blocked
+  );
+  expect("хибну відповідь не приймає, правильну — так", solved2.wrong === "sim-verdict no" && solved2.taken === "прийнято", solved2.wrong + " | " + solved2.taken);
+  expect(
+    "задача 2 розвʼязується за 6 кроків і зараховується",
+    solved2.verdict.startsWith("Готово! 4 л у відрі на 5 л. Кроків: 6. Це найкоротший шлях") &&
+      solved2.done === "✓" && solved2.rows === 7 && solved2.goal === 1,
+    solved2.verdict.slice(0, 70) + " | " + solved2.done + " | рядків " + solved2.rows
+  );
+
+  // Рон ллє туди-сюди: стан повторюється, симулятор каже про це й червонить рядки; «Крок назад» працює.
+  const ronLoop = JSON.parse(
+    await evaluate(
+      "(async () => { const sim = document.querySelector('[data-problem=\"1\"] .sim');" +
+        " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+        " const act = async (code) => { sim.querySelector('[data-act=\"' + code + '\"]').click(); await pause(20); };" +
+        " await act('F0'); await act('P01'); await act('P10'); const first = sim.querySelector('.sim-verdict').textContent;" +
+        " await act('E0'); const second = sim.querySelector('.sim-verdict').textContent;" +
+        " const red = sim.querySelectorAll('.pour-table tr.repeat').length;" +
+        " sim.querySelectorAll('.toolbar .ghost-btn')[0].click(); await pause(20);" +
+        " const rows = sim.querySelectorAll('.pour-table tbody tr').length;" +
+        " sim.querySelectorAll('.toolbar .ghost-btn')[1].click(); await pause(20);" +
+        " return JSON.stringify({ first, second, red, rows }); })()"
+    )
+  );
+  expect(
+    "повтор стану помічено, рядки почервоніли, крок назад працює",
+    ronLoop.first.includes("після кроку 1") && ronLoop.second.includes("на самому початку") && ronLoop.red === 2 && ronLoop.rows === 4,
+    JSON.stringify(ronLoop).slice(0, 160)
+  );
+
+  // Задача 11: не той бік кола — і десять кроків закінчуються раніше, ніж зʼявляється шістка.
+  const pourLimit = await evaluate(
+    "(async () => { const sim = document.querySelector('[data-problem=\"11\"] .sim');" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " const answer = async () => { for (const o of [...sim.querySelectorAll('.ask-opt')]) { o.click(); await pause(8);" +
+      "   if (!sim.querySelector('.ask-opt')) return; } };" +
+      " for (const code of ['F1','P10','E0','P10','F1','P10','E0','P10','E0','P10']) {" +
+      "   sim.querySelector('[data-act=\"' + code + '\"]').click(); await pause(12); await answer(); }" +
+      " const live = [...sim.querySelectorAll('.jug-btn')].filter(b => !b.disabled).length;" +
+      " return sim.querySelector('.sim-verdict').textContent + '|' + live + '|' + sim.querySelector('.sim-stat').textContent; })()"
+  );
+  expect("ліміт кроків спрацьовує", pourLimit.startsWith("Кроки скінчилися: 10 з 10") && pourLimit.endsWith("|0|Кроків: 10 з 10"), pourLimit.slice(0, 80));
+
+  // Пісочниця: коло «мале у велике» для 3 і 7 проходить усі числа від 1 до 7.
+  const collected = await evaluate(
+    "(async () => { const block = document.querySelector('.block.jugs-block'); const sim = block.querySelector('.sim');" +
+      " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+      " const answer = async () => { for (const o of [...sim.querySelectorAll('.ask-opt')]) { o.click(); await pause(6);" +
+      "   if (!sim.querySelector('.ask-opt')) return; } };" +
+      " const amount = (i) => sim.querySelectorAll('.jug-amt')[i].textContent;" +
+      " for (let k = 0; k < 40 && !block.querySelector('.done-mark').textContent; k++) {" +
+      "   const code = amount(0).startsWith('0') ? 'F0' : amount(1).startsWith('7') ? 'E1' : 'P01';" +
+      "   sim.querySelector('[data-act=\"' + code + '\"]').click(); await pause(8); await answer(); }" +
+      " return sim.querySelectorAll('.collect-chip.on').length + '|' + block.querySelector('.done-mark').textContent" +
+      "   + '|' + sim.querySelector('.sim-verdict').textContent; })()"
+  );
+  expect("пісочниця збирає всі числа від 1 до 7 і зараховується", collected.startsWith("7|✓|Усі числа зібрано"), collected.slice(0, 60));
+
+  // Тренажер: НСД каже «неможливо», а режим «рівно найкоротший» дає рівно стільки кроків, скільки треба.
+  const pourTrainer = JSON.parse(
+    await evaluate(
+      "(async () => { const t = document.querySelector('.block.trainer-block');" +
+        " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+        " const [a, b, c] = t.querySelectorAll('.trainer-num');" +
+        " const set = (input, v) => { input.value = String(v); input.dispatchEvent(new Event('change')); };" +
+        " set(a, 6); set(b, 9); set(c, 4); await pause(20);" +
+        " const impossible = t.querySelector('.trainer-goal').textContent;" +
+        " set(a, 5); set(b, 3); set(c, 4); t.querySelector('[data-strict=\"true\"]').click();" +
+        " t.querySelector('.trainer-controls .btn').click(); await pause(80);" +
+        " return JSON.stringify({ impossible, possible: t.querySelector('.trainer-goal').textContent," +
+        "   counter: t.querySelector('.sim-stat').textContent, jugs: t.querySelectorAll('.jug').length }); })()"
+    )
+  );
+  expect(
+    "тренажер відрізняє неможливе за НСД і дає рівно найкоротший ліміт",
+    pourTrainer.impossible.startsWith("Неможливо: НСД(6, 9) = 3") &&
+      pourTrainer.possible.includes("Найкоротший шлях — 6 кроків") &&
+      pourTrainer.counter === "Кроків: 0 з 6" &&
+      pourTrainer.jugs === 2,
+    JSON.stringify(pourTrainer).slice(0, 200)
+  );
+
+  const pourButtons = await evaluate(
+    "(() => { const color = (sel) => getComputedStyle(document.querySelector(sel)).color;" +
+      " const a = color('.block.jugs-block .jug-btn'); const b = color('.block.problem .jug-btn');" +
+      " return a === b ? 'ok' : a + ' проти ' + b; })()"
+  );
+  expect("кнопки відер читаються й усередині задачі", pourButtons === "ok", pourButtons);
+
+  const lesson3Progress = await evaluate("localStorage.getItem('chyslomahiya.v1') || ''");
+  expect(
+    "відра пишуть прогрес l03 окремо й не чіпають інших занять",
+    lesson3Progress.includes('"l03:p2"') && lesson3Progress.includes('"l03:sand"') && lesson3Progress.includes('"l01:'),
+    lesson3Progress.slice(0, 100)
+  );
 
   /* ---------- телефон і планшет ---------- */
 
