@@ -463,6 +463,259 @@ const JUGS = (function () {
     return out.join("");
   }
 
+  /* ---------- граф станів: усі дороги на одній картинці ---------- */
+
+  /* Граф рядами (пошук ушир). Від станів, де вже є відповідь, далі не йдемо: там дорога скінчилася.
+     Доріжка — це все, що виросло з першого кроку; стан, куди ведуть обидві доріжки, стоїть посередині. */
+  function graphOf(cfg) {
+    const caps = cfg.vessels;
+    const moves = allMoves(caps, Boolean(SOURCES[cfg.source]));
+    const goal = goalOf(cfg);
+    const key = (state) => state.join(",");
+    const start = startOf(cfg);
+    const nodes = new Map([[key(start), { key: key(start), state: start, layer: 0, lane: -1, lanes: new Set(), parent: null, move: null }]]);
+    const edges = [];
+    let layer = [start];
+    for (let d = 0; layer.length; d++) {
+      const next = [];
+      layer.forEach((state) => {
+        const from = nodes.get(key(state));
+        if (goal(state)) return;
+        moves.forEach((move) => {
+          const after = apply(caps, state, move);
+          if (!after) return;
+          const k = key(after);
+          if (!nodes.has(k)) {
+            const lane = d === 0 ? next.length : from.lane;
+            nodes.set(k, { key: k, state: after, layer: d + 1, lane: lane, lanes: new Set(), parent: from.key, move: move });
+            next.push(after);
+          }
+          const to = nodes.get(k);
+          if (to.layer !== d + 1) return;
+          to.lanes.add(d === 0 ? to.lane : from.lane);
+          edges.push({ from: from.key, to: k, move: move });
+        });
+      });
+      layer = next;
+    }
+    const all = [...nodes.values()];
+    all.forEach((node) => {
+      node.shared = node.lanes.size > 1;
+      node.goal = goal(node.state);
+    });
+    const roads = [0, 1].map((lane) => {
+      const end = all.filter((node) => node.goal && node.lane === lane && !node.shared).sort((a, b) => a.layer - b.layer)[0];
+      const road = [];
+      for (let node = end; node; node = node.parent ? nodes.get(node.parent) : null) road.unshift(node);
+      return road;
+    });
+    return { nodes: nodes, edges: edges, roads: roads, depth: Math.max(...all.map((node) => node.layer)) };
+  }
+
+  function shortMove(move, caps) {
+    if (move.type === "fill") return "набрали " + caps[move.i];
+    if (move.type === "empty") return "вилили " + caps[move.i];
+    return caps[move.i] + " → " + caps[move.j];
+  }
+
+  /* Що сталося на кроці — словами, з тим самим рахунком, який дитина робить сама. */
+  function narrate(cfg, before, after, move) {
+    const caps = cfg.vessels;
+    const jug = (i) => "відро " + caps[i] + "\u00a0л";
+    const source = SOURCES[cfg.source];
+    if (move.type === "fill") return "Набираємо " + jug(move.i) + " " + source.from + " — тепер у ньому " + caps[move.i] + "\u00a0л.";
+    if (move.type === "empty") return "Виливаємо " + jug(move.i) + " " + source.to + " — тепер воно порожнє.";
+    const i = move.i;
+    const j = move.j;
+    const moved = before[i] - after[i];
+    if (after[j] === caps[j] && after[i] > 0) {
+      return (
+        "Переливаємо з " + caps[i] + "\u00a0л у " + caps[j] + "\u00a0л. Там уже було " + before[j] + ", влізло лише " + moved +
+        " — у відрі на " + caps[i] + "\u00a0л лишилося " + before[i] + " − " + moved + " = " + after[i] + "\u00a0л."
+      );
+    }
+    return "Переливаємо з " + caps[i] + "\u00a0л у " + caps[j] + "\u00a0л — влізло все: там тепер " + before[j] + " + " + moved + " = " + after[j] + "\u00a0л.";
+  }
+
+  function walk(cfg) {
+    const caps = cfg.vessels;
+    const graph = graphOf(cfg);
+    const LANE_X = [70, 250];
+    const MID_X = 160;
+    const ROW = 84;
+    const TOP = 16;
+    const NW = 84;
+    const NH = 60;
+    const w = 320;
+    const h = TOP + graph.depth * ROW + NH + 10;
+    const unit = 30 / Math.max(...caps);
+
+    const place = (node) => [node.layer === 0 || node.shared ? MID_X : LANE_X[node.lane], TOP + node.layer * ROW + NH / 2];
+
+    let road = 0;
+    let step = 0;
+    let timer = null;
+
+    const big = caps.map((cap) => {
+      const liquid = el("div", { class: "jug-liquid" });
+      const jug = el("div", { class: "jug" }, liquid);
+      jug.style.setProperty("--h", Math.round(40 + cap * 14) + "px");
+      const amount = el("div", { class: "jug-amt" });
+      return { liquid: liquid, amount: amount, col: el("div", { class: "jug-col" }, amount, jug, el("div", { class: "jug-cap", text: cap + "\u00a0л" })) };
+    });
+    const story = el("div", { class: "walk-story" });
+    const counter = el("div", { class: "sim-stat" });
+    const board = el("div", { class: "walk-board" });
+
+    function nodeSVG(node, cls) {
+      const [cx, cy] = place(node);
+      const x = cx - NW / 2;
+      const y = cy - NH / 2;
+      let jugs = "";
+      node.state.forEach((amount, i) => {
+        const bh = Math.round(caps[i] * unit);
+        const bx = cx - 22 + i * 26;
+        const by = y + 40 - bh;
+        const fill = Math.round((amount / caps[i]) * bh);
+        jugs +=
+          '<rect class="walk-water" x="' + (bx + 1.5) + '" y="' + (by + bh - fill) + '" width="15" height="' + fill + '"/>' +
+          '<path class="walk-jug" d="M' + bx + " " + by + "V" + (by + bh - 3) + "Q" + bx + " " + (by + bh) + " " + (bx + 3) + " " + (by + bh) +
+          "H" + (bx + 15) + "Q" + (bx + 18) + " " + (by + bh) + " " + (bx + 18) + " " + (by + bh - 3) + "V" + by + '"/>';
+      });
+      return (
+        '<g class="walk-node ' + cls + '" data-state="' + node.key + '">' +
+        '<rect class="walk-box" x="' + x + '" y="' + y + '" width="' + NW + '" height="' + NH + '" rx="14"/>' + jugs +
+        '<text class="walk-label" x="' + cx + '" y="' + (y + NH - 7) + '" text-anchor="middle">' + node.state.join(" і ") + "</text>" +
+        (node.goal ? '<text class="walk-star" x="' + (x + NW - 4) + '" y="' + (y + 14) + '" text-anchor="end">★</text>' : "") +
+        "</g>"
+      );
+    }
+
+    function draw() {
+      const path = graph.roads[road];
+      const walked = new Set(path.slice(0, step + 1).map((node) => node.key));
+      const here = path[step];
+      const out = ['<svg class="walk-graph" viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" role="img" aria-label="Граф станів">'];
+      for (let d = 0; d <= graph.depth; d++) {
+        out.push('<text class="walk-row" x="4" y="' + (TOP + d * ROW + NH / 2 + 4) + '">' + d + "</text>");
+      }
+      graph.edges.forEach((edge) => {
+        const a = graph.nodes.get(edge.from);
+        const b = graph.nodes.get(edge.to);
+        const [x1, y1] = place(a);
+        const [x2, y2] = place(b);
+        const lane = b.shared ? "shared" : "lane" + b.lane;
+        const on = walked.has(a.key) && walked.has(b.key) && path.indexOf(b) === path.indexOf(a) + 1;
+        const sy = y1 + NH / 2;
+        const ey = y2 - NH / 2;
+        const midY = (sy + ey) / 2;
+        out.push(
+          '<path class="walk-edge ' + lane + (on ? " on" : "") + '" d="M' + x1 + " " + sy + "C" + x1 + " " + midY + " " + x2 + " " + midY + " " + x2 + " " + ey + '"/>'
+        );
+        if (!b.shared) {
+          const lx = (x1 + x2) / 2 + (x1 === x2 ? (b.lane === 0 ? -6 : 6) : 0);
+          out.push(
+            '<text class="walk-move ' + lane + (on ? " on" : "") + '" x="' + lx + '" y="' + (midY + 4) + '" text-anchor="' + (x1 === x2 ? (b.lane === 0 ? "end" : "start") : "middle") + '">' +
+              shortMove(edge.move, caps) + "</text>"
+          );
+        }
+      });
+      graph.nodes.forEach((node) => {
+        const cls = [
+          node.shared ? "shared" : node.layer ? "lane" + node.lane : "start",
+          walked.has(node.key) ? "walked" : "",
+          node === here ? "here" : "",
+          node.goal ? "goal" : "",
+        ].join(" ");
+        out.push(nodeSVG(node, cls));
+      });
+      out.push("</svg>");
+      board.innerHTML = out.join("");
+
+      here.state.forEach((amount, i) => {
+        big[i].liquid.style.height = (amount / caps[i]) * 100 + "%";
+        big[i].amount.textContent = amount + "\u00a0л";
+      });
+      const last = path.length - 1;
+      counter.textContent = "Крок " + step + " з " + last;
+      if (step === 0) {
+        story.innerHTML = "Старт: обидва відра порожні. Тисни «Далі» — і дивись, як іде стан по графу.";
+      } else {
+        story.innerHTML =
+          "<b>Крок " + step + ".</b> " + narrate(cfg, path[step - 1].state, here.state, here.move) +
+          (step === last
+            ? " <b>Ось вони — " + cfg.target + "\u00a0л! Доріжка на " + last + " " + stepsWord(last) + ".</b>" +
+              (road === 0 && graph.roads[1].length > path.length ? " Друга доріжка — на " + (graph.roads[1].length - 1) + "." : "") +
+              (road === 1 && graph.roads[0].length < path.length ? " А ліва доріжка — лише " + (graph.roads[0].length - 1) + "." : "")
+            : "");
+      }
+      prevBtn.disabled = step === 0;
+      nextBtn.disabled = step === last;
+      roadButtons.forEach((button, k) => button.classList.toggle("on", k === road));
+    }
+
+    function stop() {
+      if (timer) clearInterval(timer);
+      timer = null;
+      playBtn.textContent = "▶ Програти";
+    }
+
+    function go(delta) {
+      const last = graph.roads[road].length - 1;
+      step = Math.max(0, Math.min(last, step + delta));
+      draw();
+    }
+
+    const prevBtn = el("button", { class: "ghost-btn", type: "button", text: "◀ Назад", onclick: () => (stop(), go(-1)) });
+    const nextBtn = el("button", { class: "btn", type: "button", text: "Далі ▶", onclick: () => (stop(), go(1)) });
+    const playBtn = el("button", {
+      class: "ghost-btn",
+      type: "button",
+      text: "▶ Програти",
+      onclick: () => {
+        if (timer) {
+          stop();
+          return;
+        }
+        if (step === graph.roads[road].length - 1) step = 0;
+        draw();
+        playBtn.textContent = "⏸ Пауза";
+        timer = setInterval(() => {
+          if (step >= graph.roads[road].length - 1 || !document.body.contains(root)) {
+            stop();
+            return;
+          }
+          go(1);
+        }, 1500);
+      },
+    });
+
+    const roadButtons = graph.roads.map((path, k) =>
+      el("button", {
+        class: "kind-btn walk-road lane" + k,
+        type: "button",
+        text: (k === 0 ? "Ліва доріжка: " : "Права доріжка: ") + "спершу набрати " + caps[path[1].move.i] + "\u00a0л",
+        onclick: () => {
+          stop();
+          road = k;
+          step = 0;
+          draw();
+        },
+      })
+    );
+
+    const root = el(
+      "div",
+      { class: "sim walk" },
+      el("div", { class: "walk-roads" }, roadButtons),
+      el("div", { class: "walk-top" }, el("div", { class: "jugs-row" }, big.map((b) => b.col)), el("div", { class: "walk-side" }, counter, story)),
+      el("div", { class: "toolbar" }, prevBtn, nextBtn, playBtn),
+      board
+    );
+    draw();
+    return root;
+  }
+
   /* ---------- симулятор ---------- */
 
   function create(cfg, onSolve) {
@@ -885,6 +1138,7 @@ const JUGS = (function () {
     table: table,
     billiard: billiard,
     stateMap: stateMap,
+    walk: walk,
     shortest: shortest,
     circleRow: circleRow,
     gcd: gcd,

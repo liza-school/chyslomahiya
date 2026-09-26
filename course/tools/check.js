@@ -717,6 +717,28 @@ const LESSONS = ["l01", "l02", "l03"];
   );
   expect("карта ходів доводить: раніше шостого кроку 4 л немає", stateMap === "7|(4; 3)@6|0|6", stateMap);
 
+  // Граф станів простого прикладу (3 і 4 → 2): дві доріжки на 4 і 6 кроків, розповідь рахує так само, як дитина.
+  const walkGraph = JSON.parse(
+    await evaluate(
+      "(async () => { const walk = document.querySelector('.sim.walk'); if (!walk) return JSON.stringify({ nodes: 0 });" +
+        " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
+        " const next = walk.querySelector('.toolbar .btn'); const roads = walk.querySelectorAll('.walk-road');" +
+        " const run = async (k) => { roads[k].click(); await pause(20); while (!next.disabled) { next.click(); await pause(15); }" +
+        "   return walk.querySelector('.sim-stat').textContent + ' | ' + walk.querySelector('.walk-story').textContent; };" +
+        " const left = await run(0); const right = await run(1);" +
+        " return JSON.stringify({ nodes: walk.querySelectorAll('.walk-node').length, shared: walk.querySelectorAll('.walk-node.shared').length," +
+        "   goals: walk.querySelectorAll('.walk-node.goal').length, left, right," +
+        "   amounts: [...walk.querySelectorAll('.jug-amt')].map(a => a.textContent).join(' ') }); })()"
+    )
+  );
+  expect(
+    "граф станів: 12 карток, глухий кут посередині, ліва доріжка 4 кроки, права 6",
+    walkGraph.nodes === 12 && walkGraph.shared === 1 && walkGraph.goals === 2 &&
+      walkGraph.left.startsWith("Крок 4 з 4") && walkGraph.left.includes("3 − 1 = 2") && walkGraph.left.includes("Друга доріжка — на 6") &&
+      walkGraph.right.startsWith("Крок 6 з 6") && walkGraph.right.includes("ліва доріжка — лише 4"),
+    JSON.stringify(walkGraph).slice(0, 220)
+  );
+
   const homework3 = await evaluate(
     "(() => { const card = document.querySelector('.block.homework');" +
       " const listed = [...card.querySelectorAll('.hw-num')].map(n => n.textContent).join(',');" +

@@ -224,3 +224,51 @@
   .jug-btn { font-size: 12.5px; padding: 6px 4px; }
   .pour-table th, .pour-table td { padding: 5px 4px; }
 }
+
+/* ---------- граф станів ---------- */
+
+/* Ліва доріжка — вода, права — бурштин: дві доріжки одразу видно як два різні кола. */
+.walk { --lane0: #8fd0f5; --lane1: #f0b35a; }
+
+.walk-roads { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.walk-road.lane0 { border-color: var(--lane0); color: var(--lane0); }
+.walk-road.lane1 { border-color: var(--lane1); color: var(--lane1); }
+.walk-road.lane0.on { background: var(--lane0); color: #0c2233; }
+.walk-road.lane1.on { background: var(--lane1); color: #2b1a05; }
+
+.walk-top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; }
+.walk-top .jugs-row { flex: 0 0 auto; margin: 0; }
+.walk-side { flex: 1 1 220px; min-width: 0; }
+.walk-story { min-height: 4.8em; font-size: 15px; line-height: 1.5; color: var(--cream); margin-top: 4px; }
+.walk-story b { color: var(--gold-hi); }
+
+.walk-board { margin-top: 6px; }
+.walk-graph { display: block; width: 100%; max-width: 580px; height: auto; margin: 0 auto; }
+
+.walk-row { fill: rgba(239,228,207,.45); font: italic 12px var(--serif); }
+
+.walk-edge { fill: none; stroke-width: 2; opacity: .45; }
+.walk-edge.lane0 { stroke: var(--lane0); }
+.walk-edge.lane1 { stroke: var(--lane1); }
+.walk-edge.shared { stroke: rgba(239,228,207,.35); stroke-dasharray: 4 4; }
+.walk-edge.on { opacity: 1; stroke-width: 4; filter: drop-shadow(0 0 4px currentColor); }
+.walk-edge.lane0.on { color: var(--lane0); }
+.walk-edge.lane1.on { color: var(--lane1); }
+
+.walk-move { font: 600 10.5px var(--sans); opacity: .6; paint-order: stroke; stroke: #15122a; stroke-width: 3px; }
+.walk-move.lane0 { fill: var(--lane0); }
+.walk-move.lane1 { fill: var(--lane1); }
+.walk-move.on { opacity: 1; }
+
+.walk-box { fill: #1a1633; stroke: rgba(239,228,207,.3); stroke-width: 1.5; }
+.walk-node.lane0 .walk-box { stroke: var(--lane0); }
+.walk-node.lane1 .walk-box { stroke: var(--lane1); }
+.walk-node.shared .walk-box { stroke-dasharray: 4 3; }
+.walk-node.walked .walk-box { fill: #2a2450; }
+.walk-node.goal .walk-box { stroke: #f4cf80; stroke-width: 2.5; }
+.walk-node.here .walk-box { stroke: #fff; stroke-width: 3; filter: drop-shadow(0 0 8px rgba(255,255,255,.75)); }
+
+.walk-jug { fill: none; stroke: #aeb8c4; stroke-width: 1.6; }
+.walk-water { fill: #4a9ad6; }
+.walk-label { fill: var(--cream); font: 600 11.5px var(--sans); }
+.walk-star { fill: #f4cf80; font: 700 14px var(--sans); }

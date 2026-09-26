@@ -95,6 +95,7 @@ const COURSE = (function () {
     trainer: "тренажер",
     jugs: "відра",
     jugtrainer: "тренажер",
+    jugwalk: "граф",
     homework: "домашнє",
   };
 
@@ -282,6 +283,15 @@ const COURSE = (function () {
         el("div", { class: "block-body" }, b.html ? el("div", { html: b.html }) : null, sim)
       );
     },
+
+    /* Граф станів простого прикладу: крок за кроком, обидві доріжки. Нічого не зараховує — це картинка. */
+    jugwalk: (b) =>
+      el(
+        "section",
+        { class: "block jugs-block" },
+        el("div", { class: "block-head" }, el("span", { class: "tag", text: TAGS.jugwalk }), el("span", { text: b.title || "Граф станів" })),
+        el("div", { class: "block-body" }, b.html ? el("div", { html: b.html }) : null, JUGS.walk(b), b.after ? el("div", { html: b.after }) : null)
+      ),
 
     /* Тренажер переливань: будь-які два відра й скільки треба — на вибір дитини. */
     jugtrainer(b, ctx) {
