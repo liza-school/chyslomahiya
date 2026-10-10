@@ -315,6 +315,14 @@ h3 { font-family: var(--serif); font-size: 19px; margin: 18px 0 6px; }
 .block.game { background: var(--purple-soft); color: var(--ink); border: 1px solid var(--purple); }
 .block.game .block-head { background: var(--purple); color: #fff; border-bottom: none; }
 .block.game .tag { background: rgba(255,255,255,.22); color: #fff; }
+/* Міст до курсу Пайтону: кольори змійок з логотипа, код — як у Thonny. */
+.block.python { background: #fbf6df; color: var(--ink); border: 1px solid #306998; }
+.block.python .block-head { background: #306998; color: #fff; border-bottom: none; }
+.block.python .tag { background: #ffd43b; color: #1f3550; }
+pre.py { margin: 10px 0; padding: 10px 14px; border-radius: 10px; background: #1f2633; color: #e8e2d0; font: 15px/1.55 Consolas, "Cascadia Mono", monospace; overflow-x: auto; }
+pre.py i { color: #8fa3b8; font-style: normal; }
+.block.python code { white-space: nowrap; }
+code { font-family: Consolas, "Cascadia Mono", monospace; font-size: .95em; }
 
 /* ---------- таблиці ---------- */
 

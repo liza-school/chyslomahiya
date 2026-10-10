@@ -90,6 +90,7 @@ const COURSE = (function () {
     summary: "підсумок",
     life: "з життя",
     game: "з гри",
+    python: "з Пайтону",
     problem: "задача",
     scales: "терези",
     trainer: "тренажер",
@@ -219,6 +220,8 @@ const COURSE = (function () {
     life: (b) => card("life", b.title || "Перевір сама", null, [el("div", { html: b.html })]),
 
     game: (b) => card("game", b.title || "А тепер те саме — у грі", null, [el("div", { html: b.html })]),
+
+    python: (b) => card("python", b.title || "А як це в Пайтоні", null, [el("div", { html: b.html })]),
 
     fold: (b) => el("section", { class: "block plain" }, el("details", {}, el("summary", { text: b.title }), el("div", { html: b.html }))),
 

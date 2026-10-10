@@ -273,6 +273,25 @@ module.exports = async function checkGauss({ evaluate, expect, go }) {
     JSON.stringify(shape).slice(0, 200)
   );
 
+  // Міст до курсу Пайтону: блок із кодом і питання про індекс з нуля (10 — пастка, 9 — правильно).
+  const python = await evaluate(`(async () => {
+    const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+    const bridge = document.querySelector('.block.python');
+    const code = bridge && bridge.querySelector('pre.py');
+    const box = [...document.querySelectorAll('.block')].find((b) => b.textContent.includes('індекс') && b.textContent.includes('у числа 40'));
+    if (!code || !box) return 'немає';
+    const field = box.querySelector('.answer-input');
+    field.value = '10'; box.querySelector('.btn').click(); await pause(5);
+    const wrong = box.querySelector('.verdict').className;
+    field.value = 'nums[-1]'; box.querySelector('.btn').click(); await pause(5);
+    return [bridge.querySelector('.tag').textContent, code.textContent.includes('nums[9]'), wrong, box.querySelector('.verdict').className].join('|');
+  })()`);
+  expect(
+    "міст до Пайтону: список з нуля, індекс 40 — 9 (або -1), а не 10",
+    python === "з Пайтону|true|verdict no|verdict ok",
+    python
+  );
+
   const progress = await evaluate("localStorage.getItem('chyslomahiya.v1') || ''");
   expect(
     "заняття 4 пише власний прогрес і не чіпає інших",
