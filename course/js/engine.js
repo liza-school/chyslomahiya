@@ -197,6 +197,7 @@ const COURSE = (function () {
       card("spell", b.title || "Головне правило", null, [
         el("div", { class: "spell-name", text: b.name }),
         el("div", { html: b.html }),
+        b.origin ? el("div", { class: "spell-origin", html: b.origin }) : null,
       ]),
 
     idea: (b) => card("idea", b.title || "Ідея", null, [el("div", { html: b.html })]),
