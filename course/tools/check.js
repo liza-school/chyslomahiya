@@ -85,7 +85,7 @@ function connect(url) {
   return { send, open, events };
 }
 
-const LESSONS = ["l01", "l02", "l03"];
+const LESSONS = ["l01", "l02", "l03", "l04"];
 
 (async () => {
   const cdp = connect(await browserWs());
@@ -892,6 +892,7 @@ const LESSONS = ["l01", "l02", "l03"];
   );
 
   await require("./check-teaching.js")({ evaluate, expect, go });
+  await require("./check-gauss.js")({ evaluate, expect, go });
 
   /* ---------- телефон і планшет ---------- */
 

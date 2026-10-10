@@ -1,0 +1,269 @@
+/* Спосіб Гаусса: пари з двох кінців, відра пар, сходи «Джеміно», купки гир.
+   Панель .sim і вердикт беруться з scales.css, тут лише своє. */
+
+.block.gauss-block {
+  background: linear-gradient(150deg, #241d3d, #12102a);
+  border: 1px solid var(--gold-dim);
+  color: var(--cream);
+}
+
+.block.gauss-block .block-head { border-bottom-color: rgba(217,164,65,.28); }
+.block.gauss-block .tag { background: rgba(217,164,65,.2); color: var(--gold-hi); }
+
+/* Шість кольорів пар: на темному тлі читаються всі. */
+.sim.gauss {
+  --p0: #f4cf80;
+  --p1: #8fb3ff;
+  --p2: #7fe39a;
+  --p3: #f3a3c8;
+  --p4: #7fd6d0;
+  --p5: #f0a860;
+  --water: #5f8fd6;
+  --beer: #d9a441;
+}
+
+.mini-input {
+  font: 600 16px var(--sans);
+  width: 64px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(255,255,255,.08);
+  color: var(--cream);
+  text-align: center;
+}
+
+.mini-input.wide { width: 96px; }
+.mini-input:disabled { opacity: .7; }
+
+.pair-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 15px;
+}
+
+.pair-sum:not(:empty) {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgba(217,164,65,.35);
+  border-radius: 10px;
+  background: rgba(0,0,0,.22);
+}
+
+/* ---------- ряд чисел і арки ---------- */
+
+.pair-stage { margin: 8px 0 4px; }
+
+.rainbow { display: block; width: 100%; height: auto; margin: 0 auto; }
+
+.rainbow .tok { cursor: pointer; outline: none; }
+.rainbow .tok circle { fill: #2a2350; stroke: var(--gold-dim); stroke-width: 1.5; transition: fill .2s ease; }
+.rainbow .tok text { fill: var(--cream); font: 600 16px var(--sans); text-anchor: middle; pointer-events: none; }
+.rainbow .tok:hover circle, .rainbow .tok:focus-visible circle { stroke: var(--gold-hi); }
+.rainbow .tok.picked circle { stroke: var(--gold-hi); stroke-width: 4; }
+.rainbow .tok.paired text { fill: #1a1430; }
+.rainbow .tok.paired { cursor: default; }
+
+.rainbow .arc { fill: none; stroke-width: 3; stroke-linecap: round; }
+.rainbow .arc.fresh { stroke-dasharray: 1; stroke-dashoffset: 1; animation: arc-draw .6s ease forwards; }
+.rainbow .arc-sum { font: 700 15px var(--sans); text-anchor: middle; }
+.rainbow .arc-sum.fresh { animation: pop-in .4s ease .4s both; }
+
+@keyframes arc-draw { to { stroke-dashoffset: 0; } }
+
+.sim.gauss .p0 { --c: var(--p0); }
+.sim.gauss .p1 { --c: var(--p1); }
+.sim.gauss .p2 { --c: var(--p2); }
+.sim.gauss .p3 { --c: var(--p3); }
+.sim.gauss .p4 { --c: var(--p4); }
+.sim.gauss .p5 { --c: var(--p5); }
+
+.rainbow .arc { stroke: var(--c); }
+.rainbow .arc-sum { fill: var(--c); }
+.rainbow .tok.paired circle { fill: var(--c); stroke: var(--c); }
+
+/* Число посередині без пари світиться — його треба не загубити. */
+.rainbow .tok.lonely circle { fill: #3b2c12; stroke: var(--gold-hi); stroke-width: 3; animation: lonely 1.4s ease-in-out infinite; }
+.pchip.lonely { border-color: var(--gold-hi); animation: lonely-box 1.4s ease-in-out infinite; }
+
+@keyframes lonely { 50% { stroke: #fff4d6; stroke-width: 5; } }
+@keyframes lonely-box { 50% { box-shadow: 0 0 14px rgba(244,207,128,.85); } }
+
+/* Довгий ряд не влазить в одну лінію — кнопки-числа переносяться рядками. */
+.pair-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.pchip {
+  font: 600 14px var(--sans);
+  min-width: 38px;
+  height: 34px;
+  padding: 0 4px;
+  border-radius: 9px;
+  border: 1px solid var(--gold-dim);
+  background: #2a2350;
+  color: var(--cream);
+  cursor: pointer;
+}
+
+.pchip:hover { border-color: var(--gold-hi); }
+.pchip.picked { border: 3px solid var(--gold-hi); }
+.pchip.paired { background: var(--c); border-color: var(--c); color: #1a1430; cursor: default; }
+
+/* ---------- відра пар ---------- */
+
+.pair-shelf { display: flex; flex-wrap: wrap; gap: 8px 6px; margin: 10px 0 4px; justify-content: center; }
+.pair-shelf:empty { display: none; }
+
+.pbucket {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 50px;
+  font: 600 14px/1.15 var(--sans);
+}
+
+.pbucket.fresh { animation: pop-in .35s ease both; }
+
+.pb-body {
+  width: 40px;
+  height: 58px;
+  border: 2px solid var(--c, var(--gold-dim));
+  border-top-width: 1px;
+  border-radius: 3px 3px 12px 12px;
+  background: rgba(255,255,255,.05);
+  overflow: hidden;
+  position: relative;
+}
+
+.pb-fill { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.pb-fill i { display: block; width: 100%; }
+.pb-low { background: var(--water); }
+.pb-high { background: var(--beer); }
+
+.pb-num.hi { color: var(--beer); }
+.pb-num.lo { color: #a9c4f0; }
+.pb-sum { color: var(--c, var(--gold-hi)); font-size: 13px; white-space: nowrap; }
+
+.pbucket.lonely { width: 64px; }
+.pbucket.lonely .pb-body { border-color: var(--gold-hi); border-style: dashed; animation: lonely-box 1.4s ease-in-out infinite; }
+.pbucket.lonely .pb-sum { color: var(--gold-hi); }
+
+.pair-shelf.small .pbucket { width: 40px; font-size: 12px; }
+.pair-shelf.small .pb-body { width: 30px; height: 42px; }
+.pair-shelf.small .pb-sum { font-size: 11px; }
+.pair-shelf.small .pbucket.lonely { width: 56px; }
+
+@keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(.85); } }
+
+/* ---------- сходи «Джеміно» ---------- */
+
+.stairs-host { margin: 8px 0 2px; }
+.stairs-svg { display: block; width: 100%; height: auto; margin: 0 auto; }
+
+.st-stairs.gold .st-col { fill: #d9a441; stroke: #4a3510; stroke-width: 1; }
+.st-stairs.blue .st-col { fill: #6f8fd8; stroke: #1c2b55; stroke-width: 1; }
+.st-cell { stroke: rgba(0,0,0,.32); stroke-width: 1; }
+
+.st-copy {
+  transform-box: view-box;
+  transition: transform 1.3s cubic-bezier(.45,.05,.3,1), opacity .5s ease;
+}
+
+.st-copy.hidden { opacity: 0; }
+
+.st-label { fill: var(--gold); font: 14px var(--sans); text-anchor: middle; }
+.st-label.strong { fill: var(--gold-hi); font-weight: 600; font-size: 15px; }
+
+.st-frame rect { fill: none; stroke: var(--gold-hi); stroke-width: 2.5; stroke-dasharray: 7 5; }
+.st-frame { opacity: 0; transition: opacity .4s ease 1.2s; }
+.fitted .st-frame { opacity: 1; }
+
+/* Малюнок у тексті стоїть на світлому тлі — підписи темніші. */
+.stairs-svg.figure-only { margin: 12px auto; }
+.stairs-svg.figure-only .st-label { fill: var(--ink-soft); }
+.stairs-svg.figure-only .st-label.strong { fill: var(--ink); }
+.stairs-svg.figure-only .st-frame rect { stroke: var(--ink); }
+.stairs-svg.figure-only .st-frame { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .st-copy, .st-frame { transition: none; }
+  .rainbow .arc.fresh, .rainbow .arc-sum.fresh, .pbucket.fresh { animation: none; stroke-dashoffset: 0; }
+}
+
+/* ---------- купки гир ---------- */
+
+.piles-target b { color: var(--gold-hi); }
+
+.piles-shelf .table-coins { gap: 8px; align-items: flex-end; }
+
+.weight {
+  font: 700 14px var(--sans);
+  width: calc(34px + var(--w, 1) * 3px);
+  height: calc(30px + var(--w, 1) * 1.5px);
+  border-radius: 8px 8px 12px 12px;
+  border: 1px solid #5b4314;
+  background: linear-gradient(180deg, #f1d38f, #b9862f 70%, #8c6420);
+  color: #2b1d08;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0,0,0,.45);
+}
+
+.weight:hover { filter: brightness(1.08); }
+
+.piles-bins { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 10px; }
+
+.bin {
+  border: 1px dashed rgba(217,164,65,.5);
+  border-radius: 12px;
+  padding: 8px 10px;
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0,0,0,.18);
+  cursor: pointer;
+}
+
+.bin.active { border: 2px solid var(--gold-hi); box-shadow: 0 0 16px rgba(244,207,128,.25); }
+.bin-name { font-family: var(--serif); color: var(--gold); font-size: 15px; }
+.bin.active .bin-name { color: var(--gold-hi); }
+.bin-weights { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; flex: 1; }
+.bin-sum { font: 600 15px var(--sans); color: var(--cream); }
+.bin-sum.ok { color: #7fe39a; }
+.bin-sum.over { color: #f3a39a; }
+
+/* ---------- малюнки в тексті: два рядки Гаусса, паркан, квадрат із кутиків ---------- */
+
+.gauss-rows { table-layout: fixed; width: 100%; max-width: 560px; margin: 12px auto; font: 600 15px var(--sans); text-align: center; }
+.gauss-rows th, .gauss-rows td { text-align: center; padding: 6px 2px; border-bottom: 1px solid rgba(43,33,24,.18); }
+.gauss-rows th { width: 74px; font: italic 14px var(--serif); color: var(--ink-soft); text-align: left; }
+.gauss-rows tr.sum td { color: var(--red); font-size: 16px; border-bottom: none; }
+.gauss-rows td.dots { color: var(--ink-soft); }
+.gauss-rows .a { display: none; }
+
+.gauss-svg { display: block; width: 100%; height: auto; margin: 12px auto; }
+.fence .rail { stroke: #7a5a2a; stroke-width: 5; stroke-linecap: round; }
+.fence .post { fill: #c99a52; stroke: #5b4314; stroke-width: 1.5; }
+.fence .post-num { fill: var(--ink); font: 600 13px var(--sans); text-anchor: middle; }
+
+.odd-square .sq { stroke: rgba(43,33,24,.35); stroke-width: 1; }
+.odd-square .sq.l0 { fill: #e9c27a; }
+.odd-square .sq.l1 { fill: #9fb6e8; }
+.odd-square .sq-num { fill: var(--ink); font: 700 13px var(--sans); text-anchor: middle; }
+
+@media (max-width: 520px) {
+  .gauss-rows { font-size: 13px; }
+  .gauss-rows th { width: 22px; }
+  .gauss-rows .w { display: none; }
+  .gauss-rows .a { display: inline; font-style: normal; }
+  .pbucket { width: 42px; }
+  .pb-body { width: 32px; height: 48px; }
+  .piles-bins { grid-template-columns: 1fr; }
+}
+
+/* Магічний квадрат у розвʼязанні задачі 8 і примітка про друкарську помилку підручника. */
+.magic { width: auto; margin: 10px auto; border-collapse: collapse; font: 700 18px var(--sans); }
+.magic td { width: 40px; height: 40px; text-align: center; vertical-align: middle; border: 2px solid var(--gold-dim); padding: 0; }
+
+.typo-note { font-size: 14px; color: var(--ink-soft); border-left: 3px solid var(--red); padding-left: 10px; }

@@ -96,6 +96,9 @@ const COURSE = (function () {
     jugs: "відра",
     jugtrainer: "тренажер",
     jugwalk: "граф",
+    pairs: "пари",
+    stairs: "сходи",
+    piles: "купки",
     homework: "домашнє",
   };
 
@@ -128,6 +131,48 @@ const COURSE = (function () {
       el("div", { class: "hint-intro", text: "У ніші горять свічки. Кожна, яку запалиш, шепоче одну підказку — і ні слова більше." }),
       lines,
       el("div", { class: "toolbar" }, button)
+    );
+  }
+
+  /* Відповідь до задачі без симулятора: число або слово, порівнюється мʼяко, пробіли всередині не рахуються. */
+  function answerBox(accept, onRight) {
+    const squeeze = (text) => normalize(text).replace(/\s+/g, "");
+    const wanted = accept.map(squeeze);
+    const field = el("input", { class: "answer-input", type: "text", placeholder: "Відповідь", autocomplete: "off" });
+    const verdict = el("div", { class: "verdict" });
+    const checkBtn = el("button", { class: "btn", type: "button", text: "Перевірити ✓" });
+    checkBtn.addEventListener("click", () => {
+      const mine = squeeze(field.value);
+      if (!mine) {
+        verdict.className = "verdict no";
+        verdict.textContent = "Впиши відповідь.";
+      } else if (wanted.includes(mine)) {
+        verdict.className = "verdict ok";
+        verdict.textContent = randomOf(CHEERS);
+        onRight();
+      } else {
+        verdict.className = "verdict no";
+        verdict.textContent = "Ще ні. Перевір рахунок — або запали свічку.";
+      }
+    });
+    field.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") checkBtn.click();
+    });
+    return el("div", { class: "answer-box" }, el("div", { class: "toolbar" }, field, checkBtn), verdict);
+  }
+
+  /* Симулятори способу Гаусса окремим блоком: пари, сходи, купки гир. */
+  function gaussBlock(b, ctx, make, fallback) {
+    const doneMark = el("span", { class: "done-mark", text: isDone(ctx.key) ? "✓" : "" });
+    const sim = make(b, () => {
+      doneMark.textContent = "✓";
+      markDone(ctx.key);
+    });
+    return el(
+      "section",
+      { class: "block gauss-block", "data-exercise": b.id },
+      el("div", { class: "block-head" }, el("span", { class: "tag", text: TAGS[b.type] }), el("span", { text: b.title || fallback }), doneMark),
+      el("div", { class: "block-body" }, b.html ? el("div", { html: b.html }) : null, sim, b.after ? el("div", { html: b.after }) : null)
     );
   }
 
@@ -197,17 +242,21 @@ const COURSE = (function () {
       if (b.sim) body.push(SCALES.create(b.sim, solve));
       if (b.jugs) body.push(JUGS.create(b.jugs, solve));
       if (b.map) body.push(JUGS.explore(b.map, solve));
+      if (b.pairs) body.push(GAUSS.pairs(b.pairs, solve));
+      if (b.stairs) body.push(GAUSS.stairs(b.stairs, solve));
+      if (b.piles) body.push(GAUSS.piles(b.piles, solve));
 
       if (b.hints && b.hints.length) {
         body.push(hintLadder(b.hints));
       } else if (b.hint) {
         body.push(el("details", {}, el("summary", { text: "Підказка" }), el("div", { html: b.hint })));
       }
+      if (b.answer) body.push(answerBox(b.answer, solve));
       if (b.solution) {
         body.push(el("details", {}, el("summary", { text: "Розвʼязання" }), el("div", { html: b.solution })));
       }
 
-      if (!b.sim && !b.jugs) {
+      if (!b.sim && !b.jugs && !b.pairs && !b.stairs && !b.piles && !b.answer) {
         const verdict = el("div", { class: "verdict" });
         const selfBtn = el("button", { class: "btn", text: "Я розвʼязала ✓" });
         selfBtn.addEventListener("click", () => {
@@ -228,7 +277,7 @@ const COURSE = (function () {
           { class: "block-head" },
           head,
           el("span", { text: b.title || "Задача" }),
-          b.homework ? el("span", { class: "hw-badge", text: "домашнє" }) : null,
+          b.homework ? el("span", { class: "hw-badge", text: b.homework === true ? "домашнє" : b.homework }) : null,
           doneMark
         ),
         el("div", { class: "block-body" }, body)
@@ -288,6 +337,10 @@ const COURSE = (function () {
     jugmap(b, ctx) {
       return BLOCKS.jugs(b, ctx);
     },
+
+    pairs: (b, ctx) => gaussBlock(b, ctx, GAUSS.pairs, "Пари з двох кінців"),
+    stairs: (b, ctx) => gaussBlock(b, ctx, GAUSS.stairs, "Сходи Джеміно"),
+    piles: (b, ctx) => gaussBlock(b, ctx, GAUSS.piles, "Купки рівної маси"),
 
     /* Граф станів простого прикладу: крок за кроком, обидві доріжки. Нічого не зараховує — це картинка. */
     jugwalk: (b) =>
@@ -517,7 +570,7 @@ const COURSE = (function () {
 
   /* ---------- прогрес ---------- */
 
-  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap"]);
+  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles"]);
 
   function blockKey(lesson, block, index) {
     return lesson.id + ":" + (block.id || block.type + index);

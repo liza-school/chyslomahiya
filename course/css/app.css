@@ -389,8 +389,9 @@ details[open] summary { margin-bottom: 8px; }
   font-family: var(--serif);
   background: var(--red);
   color: #fff;
-  width: 28px; height: 28px;
-  border-radius: 50%;
+  min-width: 28px; height: 28px;
+  padding: 0 6px;
+  border-radius: 99px;
   display: grid; place-items: center;
   font-size: 15px;
   flex: none;
