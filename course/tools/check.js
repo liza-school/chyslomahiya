@@ -130,6 +130,9 @@ const LESSONS = ["l01", "l02", "l03", "l04"];
     );
     expect("у " + id + " є заклинання, пастка, ідея, з життя, з гри, підсумок", !shape.split("/").includes("0"), shape);
 
+    const origin = await evaluate("[...document.querySelectorAll('.block.spell')].every(s => s.querySelector('.spell-origin i'))");
+    expect("у " + id + " пояснено, з яких латинських слів складене заклинання", origin === true, String(origin));
+
     const problems = await evaluate("document.querySelectorAll('.block.problem').length");
     expect("у " + id + " є задачі", problems >= 5, "задач: " + problems);
 
