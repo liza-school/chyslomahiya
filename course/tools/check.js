@@ -837,29 +837,45 @@ const LESSONS = ["l01", "l02", "l03"];
   );
   expect("пісочниця збирає всі числа від 1 до 7 і зараховується", collected.startsWith("7|✓|Усі числа зібрано"), collected.slice(0, 60));
 
-  // Тренажер: НСД каже «неможливо», а режим «рівно найкоротший» дає рівно стільки кроків, скільки треба.
-  const pourTrainer = JSON.parse(
-    await evaluate(
-      "(async () => { const t = document.querySelector('.block.trainer-block');" +
-        " const pause = (ms) => new Promise(r => setTimeout(r, ms));" +
-        " const [a, b, c] = t.querySelectorAll('.trainer-num');" +
-        " const set = (input, v) => { input.value = String(v); input.dispatchEvent(new Event('change')); };" +
-        " set(a, 6); set(b, 9); set(c, 4); await pause(20);" +
-        " const impossible = t.querySelector('.trainer-goal').textContent;" +
-        " set(a, 5); set(b, 3); set(c, 4); t.querySelector('[data-strict=\"true\"]').click();" +
-        " t.querySelector('.trainer-controls .btn').click(); await pause(80);" +
-        " return JSON.stringify({ impossible, possible: t.querySelector('.trainer-goal').textContent," +
-        "   counter: t.querySelector('.sim-stat').textContent, jugs: t.querySelectorAll('.jug').length }); })()"
-    )
-  );
-  expect(
-    "тренажер відрізняє неможливе за НСД і дає рівно найкоротший ліміт",
-    pourTrainer.impossible.startsWith("Неможливо: НСД(6, 9) = 3") &&
-      pourTrainer.possible.includes("Найкоротший шлях — 6 кроків") &&
-      pourTrainer.counter === "Кроків: 0 з 6" &&
-      pourTrainer.jugs === 2,
-    JSON.stringify(pourTrainer).slice(0, 200)
-  );
+  // Генератор: усі 6 режимів дають різні посудини, нетривіальну досяжну мету й заявлену складність.
+  const pourTrainer = JSON.parse(await evaluate(`(() => {
+    const host = document.querySelector('.block.trainer-block'), trainer = host.querySelector('.jug-random-trainer');
+    const ranges = { easy: [3, 5], medium: [6, 8], hard: [9, 12] };
+    const samples = [], changed = [];
+    for (const count of [2, 3]) {
+      host.querySelector('[data-count="' + count + '"]').click();
+      for (const level of Object.keys(ranges)) {
+        host.querySelector('[data-level="' + level + '"]').click();
+        for (let i = 0; i < 5; i++) {
+          const vessels = trainer.getAttribute('data-vessels').split(',').map(Number);
+          const target = Number(trainer.getAttribute('data-target'));
+          const best = Number(trainer.getAttribute('data-best'));
+          const setup = count === 2 ? { vessels, source: 'lake', target } : { vessels, start: [vessels[0], 0, 0], target };
+          const amounts = [...trainer.querySelectorAll('.jug-amt')].map(node => Number(node.textContent.replace(/\\D/g, '')));
+          samples.push({ count, level, vessels, target, best, exact: JUGS.shortest(setup), amounts,
+            fills: trainer.querySelectorAll('[data-act^="F"]').length,
+            jugs: trainer.querySelectorAll('.jug').length,
+            guaranteed: trainer.querySelector('.trainer-goal').textContent.includes('Гарантовано можливо') });
+          const before = vessels.join(',') + ':' + target;
+          host.querySelector('.trainer-new').click();
+          changed.push(before !== trainer.getAttribute('data-vessels') + ':' + trainer.getAttribute('data-target'));
+        }
+      }
+    }
+    host.querySelector('[data-count="3"]').click();
+    host.querySelector('[data-level="hard"]').click();
+    host.querySelector('[data-strict="true"]').click();
+    return JSON.stringify({ samples, changed, strictBest: Number(trainer.getAttribute('data-best')),
+      counter: trainer.querySelector('.sim-stat').textContent });
+  })()`));
+  expect("генератор створює нову гарантовано досяжну задачу в усіх режимах", pourTrainer.samples.every((s) =>
+    s.vessels.length === s.count && new Set(s.vessels).size === s.count && !s.vessels.includes(s.target) &&
+    s.target > 0 && s.best === s.exact && s.best >= ({ easy: 3, medium: 6, hard: 9 })[s.level] &&
+    s.best <= ({ easy: 5, medium: 8, hard: 12 })[s.level] && s.jugs === s.count && s.guaranteed &&
+    (s.count === 2 ? s.fills > 0 && s.amounts.every((n) => n === 0) : s.fills === 0 && s.amounts[0] === s.vessels[0] && s.amounts.slice(1).every((n) => n === 0))) &&
+    pourTrainer.changed.every(Boolean), JSON.stringify(pourTrainer).slice(0, 260));
+  expect("режим «рівно найкоротший» ставить точний ліміт у складній задачі з трьома посудинами",
+    pourTrainer.counter === "Кроків: 0 з " + pourTrainer.strictBest, JSON.stringify(pourTrainer).slice(-120));
 
   const pourButtons = await evaluate(
     "(() => { const color = (sel) => getComputedStyle(document.querySelector(sel)).color;" +

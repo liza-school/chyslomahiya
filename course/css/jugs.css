@@ -168,6 +168,15 @@
 .sim .pour-table tr.repeat td { color: #f3a39a; }
 
 .trainer-row { margin: 8px 0 0; }
+.jug-random-trainer .trainer-controls { align-items: flex-end; }
+.trainer-choice { display: grid; gap: 7px; }
+.trainer-choice > span { font-size: 13px; color: var(--gold); }
+.trainer-new { margin-left: auto; }
+
+@media (max-width: 600px) {
+  .trainer-choice, .trainer-new { width: 100%; }
+  .trainer-new { margin-left: 0; }
+}
 
 /* ---------- більярд ---------- */
 

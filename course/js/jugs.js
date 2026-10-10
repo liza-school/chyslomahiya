@@ -1228,109 +1228,187 @@ const JUGS = (function () {
     return root;
   }
 
-  /* ---------- тренажер: будь-які два відра 1–20 л і озеро ---------- */
+  /* ---------- тренажер: гарантовано досяжні випадкові задачі з 2–3 посудинами ---------- */
 
   function trainer(cfg, onSolve) {
-    let a = cfg.a || 3;
-    let b = cfg.b || 7;
-    let t = cfg.target || 5;
+    const levels = {
+      easy: { label: "легко", min: 3, max: 5 },
+      medium: { label: "середньо", min: 6, max: 8 },
+      hard: { label: "складно", min: 9, max: 12 },
+    };
+    const poolCache = new Map();
+    let count = cfg.count === 3 ? 3 : 2;
+    let level = levels[cfg.level] ? cfg.level : "medium";
     let strict = false;
+    let current = null;
+    let previous = "";
 
-    const clamp = (value) => Math.min(20, Math.max(1, Math.round(Number(value) || 1)));
+    const goal = el("div", { class: "trainer-goal", "aria-live": "polite" });
+    const slot = el("div", { class: "trainer-slot" });
+    const countRow = el("div", { class: "trainer-kinds" });
+    const levelRow = el("div", { class: "trainer-kinds" });
+    const strictRow = el("div", { class: "trainer-kinds" });
 
-    function field(label, value) {
-      const input = el("input", { class: "trainer-num", type: "number", min: "1", max: "20", value: String(value) });
-      input.addEventListener("change", () => {
-        read();
-        paint();
-      });
-      return { input: input, node: el("label", { class: "trainer-field" }, el("span", { text: label }), input) };
+    // WHY: Reuses apply/allMoves/startOf to collect every target's true BFS distance once per capacity set.
+    function minimumTargets(base) {
+      const caps = base.vessels;
+      const moves = allMoves(caps, Boolean(SOURCES[base.source]));
+      const start = startOf(base);
+      const queue = [{ state: start, depth: 0 }];
+      const seen = new Set([start.join(",")]);
+      const targets = new Map();
+      for (let head = 0; head < queue.length; head++) {
+        const node = queue[head];
+        node.state.forEach((amount) => {
+          if (amount > 0 && !caps.includes(amount) && !targets.has(amount)) targets.set(amount, node.depth);
+        });
+        moves.forEach((move) => {
+          const after = apply(caps, node.state, move);
+          if (!after) return;
+          const key = after.join(",");
+          if (seen.has(key)) return;
+          seen.add(key);
+          queue.push({ state: after, depth: node.depth + 1 });
+        });
+      }
+      return targets;
     }
 
-    const fieldA = field("Відро", a);
-    const fieldB = field("Відро", b);
-    const fieldT = field("Треба", t);
-    const goal = el("div", { class: "trainer-goal" });
-    const slot = el("div", { class: "trainer-slot" });
+    // WHY: Builds candidate pools from engine-reachable states; random retries could still produce impossible tasks.
+    function poolsFor(n) {
+      if (poolCache.has(n)) return poolCache.get(n);
+      const pools = { easy: [], medium: [], hard: [] };
+      const add = (base) => {
+        minimumTargets(base).forEach((best, target) => {
+          Object.keys(levels).forEach((key) => {
+            const range = levels[key];
+            if (best >= range.min && best <= range.max) {
+              pools[key].push({
+                vessels: base.vessels.slice(),
+                source: base.source || null,
+                start: base.start ? base.start.slice() : null,
+                target: target,
+                best: best,
+              });
+            }
+          });
+        });
+      };
+      if (n === 2) {
+        for (let a = 2; a < 20; a++) {
+          for (let b = a + 1; b <= 20; b++) add({ vessels: [a, b], source: "lake" });
+        }
+      } else {
+        for (let big = 5; big <= 20; big++) {
+          for (let middle = 3; middle < big; middle++) {
+            for (let small = 2; small < middle; small++) add({ vessels: [big, middle, small], start: [big, 0, 0] });
+          }
+        }
+      }
+      Object.keys(pools).forEach((key) => {
+        if (!pools[key].length) throw new Error("Немає задач для режиму " + n + " / " + key);
+      });
+      poolCache.set(n, pools);
+      return pools;
+    }
 
-    const strictRow = el("div", { class: "trainer-kinds" });
-    const strictButtons = [
-      [false, "без ліміту"],
-      [true, "рівно найкоротший"],
-    ].map(([value, label]) => {
+    // WHY: Keeps the public create() config unchanged for generated and hand-written lesson tasks.
+    function setup() {
+      const result = { vessels: current.vessels.slice(), target: current.target };
+      if (current.source) result.source = current.source;
+      if (current.start) result.start = current.start.slice();
+      return result;
+    }
+
+    // WHY: Auto-generated tasks need a concrete story for both open and closed systems; create() only knows generic wording.
+    function intro() {
+      if (count === 2) {
+        return "Відра на <b>" + current.vessels[0] + " л</b> і <b>" + current.vessels[1] + " л</b>. Озеро поруч. Треба рівно <b>" + current.target + " л</b>.";
+      }
+      return "Посудина на <b>" + current.vessels[0] + " л</b> повна. Посудини на <b>" + current.vessels[1] + " л</b> і <b>" + current.vessels[2] + " л</b> порожні. Треба рівно <b>" + current.target + " л</b>.";
+    }
+
+    // WHY: Rebuilds existing JUGS.create in one slot so a new challenge cannot retain the previous state or limit.
+    function render() {
+      countButtons.forEach((button) => button.classList.toggle("on", Number(button.getAttribute("data-count")) === count));
+      levelButtons.forEach((button) => button.classList.toggle("on", button.getAttribute("data-level") === level));
+      strictButtons.forEach((button) => button.classList.toggle("on", (button.getAttribute("data-strict") === "true") === strict));
+      root.setAttribute("data-count", String(count));
+      root.setAttribute("data-level", level);
+      root.setAttribute("data-best", String(current.best));
+      root.setAttribute("data-target", String(current.target));
+      root.setAttribute("data-vessels", current.vessels.join(","));
+      const row = count === 2 ? circleRow(current.vessels[0], current.vessels[1]) : [];
+      goal.innerHTML =
+        "Гарантовано можливо. Карта станів перевірила: найкоротший шлях — <b>" + current.best + "</b> " + stepsWord(current.best) + "." +
+        (row.length
+          ? '<details class="trainer-row"><summary>Рядок кола</summary>' + row.map((x) => (x === current.target ? "<b>" + x + "</b>" : String(x))).join(", ") + "</details>"
+          : "");
+      slot.textContent = "";
+      slot.append(create(Object.assign(setup(), { intro: intro(), limit: strict ? current.best : 0 }), onSolve));
+    }
+
+    // WHY: Selects only pre-proved candidates and rejects the immediately previous capacities/target combination.
+    function newChallenge() {
+      const pool = poolsFor(count)[level];
+      let index = Math.floor(Math.random() * pool.length);
+      let picked = pool[index];
+      let key = picked.vessels.join(",") + ":" + picked.target;
+      if (pool.length > 1 && key === previous) {
+        picked = pool[(index + 1) % pool.length];
+        key = picked.vessels.join(",") + ":" + picked.target;
+      }
+      current = picked;
+      previous = key;
+      render();
+    }
+
+    const countButtons = [2, 3].map((value) => {
+      const button = el("button", { class: "kind-btn", type: "button", text: value + " посудини", "data-count": String(value) });
+      button.addEventListener("click", () => {
+        if (count === value) return;
+        count = value;
+        newChallenge();
+      });
+      countRow.append(button);
+      return button;
+    });
+    const levelButtons = Object.keys(levels).map((key) => {
+      const button = el("button", { class: "kind-btn", type: "button", text: levels[key].label, "data-level": key });
+      button.addEventListener("click", () => {
+        if (level === key) return;
+        level = key;
+        newChallenge();
+      });
+      levelRow.append(button);
+      return button;
+    });
+    const strictButtons = [[false, "без ліміту"], [true, "рівно найкоротший"]].map(([value, label]) => {
       const button = el("button", { class: "kind-btn", type: "button", text: label, "data-strict": String(value) });
       button.addEventListener("click", () => {
+        if (strict === value) return;
         strict = value;
-        paint();
+        render();
       });
       strictRow.append(button);
       return button;
     });
-
-    function read() {
-      a = clamp(fieldA.input.value);
-      b = clamp(fieldB.input.value);
-      t = clamp(fieldT.input.value);
-    }
-
-    const setup = () => ({ vessels: [a, b], source: "lake", target: t });
-
-    function paint() {
-      fieldA.input.value = String(a);
-      fieldB.input.value = String(b);
-      fieldT.input.value = String(t);
-      strictButtons.forEach((button) => button.classList.toggle("on", (button.getAttribute("data-strict") === "true") === strict));
-      const g = gcd(a, b);
-      if (t > Math.max(a, b)) {
-        goal.innerHTML = "Неможливо: " + t + " л не влізе в жодне з відер.";
-        return;
-      }
-      if (t % g) {
-        goal.innerHTML =
-          "Неможливо: НСД(" + a + ", " + b + ") = " + g + ". У відрах завжди число, кратне " + g + ", а " + t + " на " + g + " не ділиться.";
-        return;
-      }
-      const best = shortest(setup());
-      const row = circleRow(a, b);
-      goal.innerHTML =
-        (g === 1
-          ? "Можна: НСД(" + a + ", " + b + ") = 1, тож набирається будь-яке число до " + Math.max(a, b) + "."
-          : "Можна: НСД(" + a + ", " + b + ") = " + g + ", і " + t + " ділиться на " + g + ".") +
-        " Найкоротший шлях — <b>" + best + "</b> " + stepsWord(best) + "." +
-        (row.length
-          ? '<details class="trainer-row"><summary>Рядок кола</summary>' +
-            row.map((x) => (x === t ? "<b>" + x + "</b>" : String(x))).join(", ") +
-            "</details>"
-          : "");
-    }
-
-    function build() {
-      read();
-      paint();
-      const best = shortest(setup());
-      slot.textContent = "";
-      slot.append(create(Object.assign(setup(), { limit: strict && best > 0 ? best : 0 }), onSolve));
-    }
-
-    const startBtn = el("button", { class: "btn", type: "button", text: "Нова задача", onclick: build });
+    const nextBtn = el("button", { class: "btn trainer-new", type: "button", text: "Інша гарантована задача" });
+    nextBtn.addEventListener("click", newChallenge);
 
     const root = el(
       "div",
-      { class: "trainer" },
-      el(
-        "div",
-        { class: "trainer-controls" },
-        fieldA.node,
-        fieldB.node,
-        fieldT.node,
-        el("div", { class: "trainer-field" }, el("span", { text: "Кроків" }), strictRow),
-        startBtn
-      ),
+      { class: "trainer jug-random-trainer" },
+      el("div", { class: "trainer-controls" },
+        el("div", { class: "trainer-choice" }, el("span", { text: "Посудин" }), countRow),
+        el("div", { class: "trainer-choice" }, el("span", { text: "Складність" }), levelRow),
+        el("div", { class: "trainer-choice" }, el("span", { text: "Кроків" }), strictRow),
+        nextBtn),
       goal,
       slot
     );
 
-    build();
+    newChallenge();
     return root;
   }
 

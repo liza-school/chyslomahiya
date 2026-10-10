@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Превʼю тренажера</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/scales.css">
+  <link rel="stylesheet" href="css/jugs.css">
+</head>
+<body>
+  <main class="lesson">
+    <section class="block trainer-block">
+      <div class="block-head"><span class="tag">ТРЕНАЖЕР</span><span>Тренажер Аґуаменті</span></div>
+      <div class="block-body">
+        <p><i>Аґуаменті</i> створює гарантовано розвʼязувані задачі з двома або трьома посудинами.</p>
+        <div id="preview"></div>
+      </div>
+    </section>
+  </main>
+  <script src="js/engine.js"></script>
+  <script src="js/jugs.js"></script>
+  <script>
+    const trainer = JUGS.trainer({ count: 2, level: "medium" });
+    document.getElementById("preview").append(trainer);
+    if (location.search === "?three") trainer.querySelector('[data-count="3"]').click();
+  </script>
+</body>
+</html>
