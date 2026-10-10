@@ -252,6 +252,9 @@ module.exports = async function checkGauss({ evaluate, expect, go }) {
     fences: [...document.querySelectorAll('.fence')].map((f) => f.querySelectorAll('.post').length).join(','),
     square: document.querySelectorAll('.odd-square .sq').length,
     figure: document.querySelectorAll('.stairs-svg.figure-only').length,
+    seesaws: [...document.querySelectorAll('.seesaw')].map((g) => g.querySelectorAll('.ball').length + ':' + [...g.querySelectorAll('.arc-sum')].map((t) => t.textContent).join('/') + ':' + [...g.querySelectorAll('.ball.mid')].map((b) => b.nextElementSibling.textContent).join('')).join(' '),
+    grow: [...document.querySelectorAll('.sq-grow')].map((g) => g.querySelectorAll('.cell').length + '/' + g.querySelectorAll('.cell.new').length).join(','),
+    sums: [GAUSS.sum(1, 1, 10), GAUSS.sum(1, 1, 9), GAUSS.sum(1, 2, 4)].join(','),
     problems: [...document.querySelectorAll('.block.problem')].map((p) => p.getAttribute('data-problem')).join(','),
     strayText: [...document.querySelectorAll('.sim.gauss')].filter((sim) => [...sim.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())).length,
   })`));
@@ -291,6 +294,13 @@ module.exports = async function checkGauss({ evaluate, expect, go }) {
     python === "з Пайтону|true|verdict no|verdict ok",
     python
   );
+
+  expect(
+    "гойдалки на початку: 10 чисел — пʼять пар по 11; 9 чисел — чотири пари по 10, а 5 на опорі",
+    shape.seesaws === "10:11/11/11/11/11: 9:10/10/10/10:5" && shape.sums === "55,45,16",
+    shape.seesaws + " | " + shape.sums
+  );
+  expect("квадрат росте кутиками: 1 + 4 + 9 + 16 клітинок, нових 1 + 3 + 5 + 7", shape.grow === "30/16", shape.grow);
 
   const progress = await evaluate("localStorage.getItem('chyslomahiya.v1') || ''");
   expect(

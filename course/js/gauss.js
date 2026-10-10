@@ -758,5 +758,86 @@ const GAUSS = (function () {
     return out + "</svg>";
   }
 
-  return { pairs, stairs, piles, rows, fence, oddSquare, stairsFigure, sum, count, ways };
+  /* Гойдалка-лінійка: числа — позначки на дошці, кульки однакові, опора рівно посередині.
+     Пари сидять на однаковій відстані від опори; при непарній кількості середнє — просто на опорі.
+     Числа навмисно не ваги: інакше 10 переважило б 1, і рівновага була б неправдою. */
+  function seesaw(first, step, n) {
+    const U = 52;
+    const R = 18;
+    const L = 30;
+    const H = 90;
+    const W = 2 * L + n * U;
+    const cx = W / 2;
+    const top = 128;
+    const cy = top + R;
+    const plank = cy + R + 1;
+    const x = (i) => L + (i + 0.5) * U;
+    const value = (i) => first + i * step;
+    const half = Math.floor(n / 2);
+    const odd = n % 2 === 1;
+    const maxRx = ((n - 1) * U) / 2;
+    const comma = (v) => String(v).replace(".", ",");
+    let out = '<svg class="gauss-svg seesaw" viewBox="0 0 ' + W + ' 244" style="max-width:' + Math.round(W * 1.15) + 'px" role="img" aria-label="Гойдалка: ' + n + " чисел, " + (odd ? "середнє сидить на опорі" : "опора між двома числами") + '">';
+    for (let k = 0; k < half; k++) {
+      const x1 = x(k);
+      const x2 = x(n - 1 - k);
+      const rx = (x2 - x1) / 2;
+      const ry = 12 + (rx / maxRx) * H;
+      const hue = " p" + (k % HUES);
+      out += '<path class="arc' + hue + '" d="M ' + x1 + " " + top + " A " + rx + " " + ry + " 0 0 1 " + x2 + " " + top + '"/>';
+      out += '<text class="arc-sum' + hue + '" x="' + cx + '" y="' + (top - ry - 5) + '">' + (value(k) + value(n - 1 - k)) + "</text>";
+    }
+    out += '<rect class="plank" x="' + (L - 12) + '" y="' + plank + '" width="' + (n * U + 24) + '" height="8" rx="4"/>';
+    for (let i = 0; i < n; i++) out += '<line class="tick" x1="' + x(i) + '" y1="' + (plank + 8) + '" x2="' + x(i) + '" y2="' + (plank + 13) + '"/>';
+    out += '<polygon class="pivot" points="' + cx + "," + (plank + 8) + " " + (cx - 22) + "," + (plank + 44) + " " + (cx + 22) + "," + (plank + 44) + '"/>';
+    out += '<line class="ground" x1="' + (cx - 44) + '" y1="' + (plank + 44) + '" x2="' + (cx + 44) + '" y2="' + (plank + 44) + '"/>';
+    /* Від країв до середини: ліве число росте на крок, праве меншає на крок. Біля опори не підписуємо — там тісно. */
+    for (let i = 0; i < half - 1; i++) {
+      out += '<text class="step" x="' + (L + (i + 1) * U) + '" y="' + (plank + 26) + '">+' + step + " →</text>";
+      out += '<text class="step" x="' + (L + (n - 1 - i) * U) + '" y="' + (plank + 26) + '">← −' + step + "</text>";
+    }
+    for (let i = 0; i < n; i++) {
+      const mid = odd && i === half;
+      out += '<circle class="ball' + (mid ? " mid" : "") + '" cx="' + x(i) + '" cy="' + cy + '" r="' + R + '"/>';
+      out += '<text class="ball-num" x="' + x(i) + '" y="' + (cy + 5.5) + '">' + value(i) + "</text>";
+    }
+    const centre = (value(0) + value(n - 1)) / 2;
+    const note = odd
+      ? "опора: (" + value(0) + " + " + value(n - 1) + ") : 2 = " + comma(centre) + " — просто під числом " + value(half)
+      : "опора: (" + value(0) + " + " + value(n - 1) + ") : 2 = " + comma(centre) + " — між " + value(half - 1) + " і " + value(half);
+    out += '<text class="pivot-note" x="' + cx + '" y="' + (plank + 66) + '">' + note + "</text>";
+    return out + "</svg>";
+  }
+
+  /* Квадрат росте кутиками: 1 → 2 × 2 → 3 × 3 → …; новий кутик щоразу золотий, старий квадрат синій. */
+  function squareGrowth(k) {
+    const C = 22;
+    const gap = 50;
+    const P = 10;
+    const W = 2 * P + (C * k * (k + 1)) / 2 + gap * (k - 1);
+    const base = P + k * C;
+    let out = '<svg class="gauss-svg sq-grow" viewBox="0 0 ' + W + " " + (base + 44) + '" style="max-width:' + Math.round(W * 1.3) + 'px" role="img" aria-label="Квадрат росте кутиками від 1 до ' + k + " на " + k + '">';
+    let left = P;
+    for (let s = 1; s <= k; s++) {
+      for (let y = 0; y < s; y++) {
+        for (let x = 0; x < s; x++) {
+          const cls = Math.max(x, y) === s - 1 ? "new" : "old";
+          out += '<rect class="cell ' + cls + '" x="' + (left + x * C) + '" y="' + (base - s * C + y * C) + '" width="' + C + '" height="' + C + '"/>';
+        }
+      }
+      const mid = left + (s * C) / 2;
+      const odds = Array.from({ length: s }, (_, i) => 2 * i + 1).join(" + ");
+      out += '<text class="sq-sum" x="' + mid + '" y="' + (base + 18) + '">' + odds + "</text>";
+      out += '<text class="sq-side" x="' + mid + '" y="' + (base + 37) + '">' + s + " · " + s + (s > 1 ? " = " + s * s : "") + "</text>";
+      if (s < k) {
+        const ax = left + s * C + gap / 2;
+        out += '<text class="sq-add" x="' + ax + '" y="' + (base - 22) + '">+' + (2 * s + 1) + "</text>";
+        out += '<text class="sq-arrow" x="' + ax + '" y="' + (base - 4) + '">→</text>';
+      }
+      left += s * C + gap;
+    }
+    return out + "</svg>";
+  }
+
+  return { pairs, stairs, piles, rows, fence, oddSquare, squareGrowth, seesaw, stairsFigure, sum, count, ways };
 })();

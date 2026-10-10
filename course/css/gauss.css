@@ -252,6 +252,33 @@
 .odd-square .sq.l1 { fill: #9fb6e8; }
 .odd-square .sq-num { fill: var(--ink); font: 700 13px var(--sans); text-anchor: middle; }
 
+/* Гойдалка-лінійка стоїть у блакитній «ідеї» — кольори пар темніші, ніж у темних симуляторах. */
+.seesaw .p0 { --c: #9a6a0a; }
+.seesaw .p1 { --c: #2f5fbf; }
+.seesaw .p2 { --c: #2c7a45; }
+.seesaw .p3 { --c: #b8457a; }
+.seesaw .p4 { --c: #1f7a74; }
+.seesaw .p5 { --c: #b85c12; }
+.seesaw .arc { fill: none; stroke: var(--c); stroke-width: 2.5; stroke-linecap: round; }
+.seesaw .arc-sum { fill: var(--c); font: 700 14px var(--sans); text-anchor: middle; paint-order: stroke; stroke: var(--blue-soft); stroke-width: 4px; }
+.seesaw .ball { fill: #fff8e6; stroke: #5b4314; stroke-width: 1.5; }
+.seesaw .ball.mid { fill: #f4cf80; stroke: var(--red); stroke-width: 3; }
+.seesaw .ball-num { fill: var(--ink); font: 700 15px var(--sans); text-anchor: middle; }
+.seesaw .plank { fill: #8a5a2b; }
+.seesaw .tick { stroke: #5b4314; stroke-width: 1.5; }
+.seesaw .pivot { fill: #5b4a36; }
+.seesaw .ground { stroke: #5b4a36; stroke-width: 2; }
+.seesaw .step { fill: var(--ink-soft); font: 12px var(--sans); text-anchor: middle; }
+.seesaw .pivot-note { fill: var(--ink); font: italic 14px var(--serif); text-anchor: middle; }
+
+.sq-grow .cell { stroke: rgba(43,33,24,.35); stroke-width: 1; }
+.sq-grow .cell.old { fill: #9fb6e8; }
+.sq-grow .cell.new { fill: #e9c27a; }
+.sq-grow .sq-sum { fill: var(--ink-soft); font: 13px var(--sans); text-anchor: middle; }
+.sq-grow .sq-side { fill: var(--ink); font: 700 14px var(--sans); text-anchor: middle; }
+.sq-grow .sq-add { fill: #9a6a0a; font: 700 14px var(--sans); text-anchor: middle; }
+.sq-grow .sq-arrow { fill: var(--ink-soft); font: 20px var(--sans); text-anchor: middle; }
+
 @media (max-width: 520px) {
   .gauss-rows { font-size: 13px; }
   .gauss-rows th { width: 22px; }
