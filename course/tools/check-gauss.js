@@ -1,6 +1,7 @@
 // Заняття 4: спосіб Гаусса. Пари з двох кінців, відра пар, сходи «Джеміно», купки гир,
 // поля відповіді й незалежна арифметика всіх задач сторінки 21.
-module.exports = async function checkGauss({ evaluate, expect, go }) {
+module.exports = async function checkGauss({ evaluate, expect, go, call }) {
+  const fs = require("fs"), path = require("path"), os = require("os");
   /* Задача 13 — без браузера: перебором переконуємось, що розвʼязок єдиний. */
   const T = (n) => (n * (n + 1)) / 2;
   const missed = [];
@@ -45,7 +46,87 @@ module.exports = async function checkGauss({ evaluate, expect, go }) {
   })()`);
   expect("поля відповіді приймають правильне число й не приймають хибне", !answered.includes("НІ") && !answered.includes("немає"), answered);
 
-  // Пісочниця «Веселка пар»: не дзеркальна пара відхиляється, дзеркальна дає арку й відро, закляття складає решту.
+  // Підказка для № 8 відкривається першою свічкою, не розкриваючи готового розподілу.
+  const apples = await evaluate(`(() => {
+    const task = document.querySelector('[data-problem="8"]');
+    task.querySelector('.candle').click();
+    return task.querySelector('.hint-box').textContent.toLowerCase();
+  })()`);
+  expect("№ 8: перша підказка пояснює рівну вагу яблук для Сємі, Моніки й Ванільки",
+    ["сємі", "моніки", "ванільки", "однакову загальну вагу", "кількість яблук може відрізнятися"].every(text => apples.includes(text)) && !apples.includes('45 г'), apples);
+
+  // Будівництво використовує ті самі пари: нічого не дублюється, висоти доданків і сума зберігаються.
+  const building = await evaluate(`(() => {
+    const block = document.querySelector('[data-exercise="rainbow"]');
+    const sim = block.querySelector('.pairs-sim');
+    const range = sim.querySelector('.trainer-range');
+    const click = (i, key) => sim.querySelector('.build-token[data-i="' + i + '"]').dispatchEvent(
+      key ? new KeyboardEvent('keydown', { key, bubbles: true }) : new MouseEvent('click', { bubbles: true }));
+    sim.querySelector('[data-building="true"]').click();
+    const samples = [];
+    for (const step of [1, 2, 5]) {
+      range.value = '6'; range.dispatchEvent(new Event('input'));
+      sim.querySelector('.kind-btn[data-step="' + step + '"]').click();
+      click(0); click(1);
+      const rejected = sim.querySelector('.sim-verdict').classList.contains('no') && !sim.querySelector('.build-tower');
+      click(0, 'Enter'); click(5, ' '); click(1); click(4);
+      sim.querySelector('.pair-magic').click();
+      const towers = [...sim.querySelectorAll('.build-tower')].map((tower) => {
+        const pieces = [...tower.querySelectorAll('.build-piece')];
+        const values = pieces.map(piece => Number(piece.dataset.v));
+        const heights = pieces.map(piece => Number(piece.querySelector('rect').getAttribute('height')));
+        return { values, height: heights.reduce((a, b) => a + b, 0), unit: heights[0] / values[0] };
+      });
+      const moved = [...sim.querySelectorAll('.build-token.moved')].every(token => getComputedStyle(token.querySelector('.build-piece rect')).fill === 'none');
+      samples.push({ step, rejected, towers, moved, remaining: sim.querySelectorAll('.build-token:not(.moved)').length });
+    }
+    range.value = '5'; range.dispatchEvent(new Event('input'));
+    sim.querySelector('.kind-btn[data-step="2"]').click();
+    const reset = !sim.querySelector('.build-tower') && !sim.querySelector('.pair-sum input');
+    click(0); click(4); click(1); click(3);
+    const lone = sim.querySelector('.build-tower.lonely .build-piece');
+    const fields = sim.querySelectorAll('.pair-sum input');
+    fields[0].value = '2'; fields[1].value = '24'; sim.querySelector('.pair-sum .btn').click();
+    const forgot = sim.querySelector('.sim-verdict').textContent;
+    fields[1].value = '30';
+    sim.querySelector('[data-building="false"]').click();
+    const preserved = [...sim.querySelectorAll('.pair-sum input')].map(f => f.value).join(',') === '2,30' && sim.querySelectorAll('.pbucket').length === 3;
+    sim.querySelector('[data-building="true"]').click();
+    const back = [...sim.querySelectorAll('.pair-sum input')].map(f => f.value).join(',') === '2,30' && sim.querySelectorAll('.build-tower').length === 3 && sim.querySelector('[data-building="true"]').getAttribute('aria-pressed') === 'true';
+    return { samples, reset, middle: lone.dataset.v, halfHeight: Number(lone.querySelector('rect').getAttribute('height')), forgot, preserved, back, done: block.querySelector('.done-mark').textContent };
+  })()`);
+  expect("будівництво: кроки 1/2/5, клавіатура, лише крайні пари, три рівні вежі без зайвих кубиків",
+    building.samples.every(sample => sample.rejected && sample.moved && sample.remaining === 0 && sample.towers.length === 3 &&
+      sample.towers.every(tower => tower.values[0] + tower.values[1] === 7 * sample.step && Math.abs(tower.height - 140) < 0.001 && Math.abs(tower.unit - 20 / sample.step) < 0.001)), JSON.stringify(building.samples));
+  expect("будівництво: середнє без пари, скидання, перемикання зі збереженням відповіді; перегляд не зараховується",
+    building.reset && building.middle === '6' && building.halfHeight === 70 && building.forgot.includes('число без пари — 6') && building.preserved && building.back && building.done === '', JSON.stringify(building));
+
+  await evaluate(`(() => {
+    const sim = document.querySelector('[data-exercise="rainbow"] .pairs-sim');
+    const range = sim.querySelector('.trainer-range'); range.value = '10'; range.dispatchEvent(new Event('input'));
+    sim.querySelector('.kind-btn[data-step="1"]').click();
+    for (const i of [0, 9, 1, 8]) sim.querySelector('.build-token[data-i="' + i + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  })()`);
+  for (const [name, width] of [["partial", 1366], ["desktop", 1366], ["tablet", 820], ["phone", 390]]) {
+    if (name === "desktop") await evaluate("document.querySelector('[data-exercise=\"rainbow\"] .pair-magic').click()");
+    await call("Emulation.setDeviceMetricsOverride", { width, height: 1600, deviceScaleFactor: 1, mobile: false });
+    await evaluate(name === "phone" ?
+      "document.querySelector('[data-exercise=\"rainbow\"] .pair-views').scrollIntoView({ block: 'start' }); window.scrollBy(0, -120)" :
+      "document.querySelector('[data-exercise=\"rainbow\"]').scrollIntoView({ block: 'start' }); window.scrollBy(0, -70)");
+    const layout = await evaluate(`({ page: document.documentElement.scrollWidth, width: document.documentElement.clientWidth,
+      towers: [...document.querySelectorAll('[data-exercise="rainbow"] .build-tower')].map(t => t.querySelector('.build-label.strong').textContent).join(',') })`);
+    expect("вежі Гаусса читаються без виходу за сторінку, " + name + " " + width + " px", layout.page <= layout.width + 1 && layout.towers === (name === "partial" ? "11,11" : "11,11,11,11,11"), JSON.stringify(layout));
+    const shot = await call("Page.captureScreenshot", { format: "png" });
+    fs.writeFileSync(path.join(os.tmpdir(), "chys-building-" + name + ".png"), Buffer.from(shot.data, "base64"));
+  }
+  await call("Emulation.clearDeviceMetricsOverride");
+  await evaluate(`(() => {
+    const sim = document.querySelector('[data-exercise="rainbow"] .pairs-sim');
+    sim.querySelector('[data-building="false"]').click();
+    sim.querySelector('.ghost-btn').click();
+  })()`);
+
+  // Пісочниця пар: не дзеркальна пара відхиляється, дзеркальна дає арку й відро, закляття складає решту.
   const rainbow = JSON.parse(await evaluate(`(async () => {
     const block = document.querySelector('[data-exercise="rainbow"]');
     const sim = block.querySelector('.pairs-sim');
@@ -159,6 +240,72 @@ module.exports = async function checkGauss({ evaluate, expect, go }) {
       round.verdict.startsWith("Готово! 100 + 100 + 100 = 300") && round.done === "✓",
     JSON.stringify(round)
   );
+
+  // Ряд → стовпчики: крок додає відповідну кількість кубиків у висоту, перегляд нічого не зараховує.
+  const growth = await evaluate(`(() => {
+    const block = document.querySelector('[data-exercise="stairs"]');
+    const sim = block.querySelector('.stairs-sim');
+    const samples = [];
+    for (const step of [1, 2, 5]) {
+      sim.querySelector('.kind-btn[data-step="' + step + '"]').click();
+      const range = sim.querySelector('.trainer-range');
+      range.value = '4'; range.dispatchEvent(new Event('input'));
+      const columns = [...sim.querySelectorAll('.gold .st-col')];
+      columns[2].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      const unit = Number(columns[0].getAttribute('height')) / step;
+      samples.push({ step, numbers: columns.map(c => Number(c.dataset.v)),
+        added: Number(sim.querySelector('.st-rise').getAttribute('height')) / unit,
+        text: sim.querySelector('.stairs-height-text').textContent,
+        selected: columns[2].getAttribute('aria-pressed') });
+    }
+    const first = sim.querySelector('.gold .st-col');
+    first.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    const keyboard = first.getAttribute('aria-pressed') === 'true' && sim.querySelector('.stairs-height-text').textContent.includes('Перший стовпчик має 5');
+    const done = block.querySelector('.done-mark').textContent;
+    return { samples, keyboard, done };
+  })()`);
+  expect("кроки +1/+2/+5 змінюють числа, пояснення й кількість підсвічених кубиків",
+    growth.samples.every(s => s.numbers.join(',') === [s.step, 2*s.step, 3*s.step, 4*s.step].join(',') &&
+      Math.abs(s.added - s.step) < 0.0001 && s.text.includes('Крок: ' + 3*s.step + ' − ' + 2*s.step + ' = ' + s.step) && s.selected === 'true'), JSON.stringify(growth));
+  expect("висоту можна обрати клавіатурою; перегляд не зараховує сходи", growth.keyboard && growth.done === "", JSON.stringify(growth));
+
+  await evaluate(`(() => {
+    const sim = document.querySelector('[data-exercise="stairs"] .stairs-sim');
+    sim.querySelector('.kind-btn[data-step="2"]').click();
+    sim.querySelectorAll('.gold .st-col')[2].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  })()`);
+  await call("Emulation.setDeviceMetricsOverride", { width: 1366, height: 1400, deviceScaleFactor: 1, mobile: false });
+  await evaluate("document.querySelector('[data-exercise=\"stairs\"]').scrollIntoView({ block: 'start' }); window.scrollBy(0, -80)");
+  for (const [name, fitted, width] of [["growth", false, 1366], ["rectangle", true, 1366], ["tablet", true, 820]]) {
+    if (fitted && name === "rectangle") {
+      await evaluate(`(() => {
+        const sim = document.querySelector('[data-exercise="stairs"] .stairs-sim');
+        sim.querySelectorAll('.toolbar .btn')[0].click();
+        sim.querySelectorAll('.toolbar .btn')[1].click();
+      })()`);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+    await call("Emulation.setDeviceMetricsOverride", { width, height: 1400, deviceScaleFactor: 1, mobile: false });
+    await evaluate("document.querySelector('[data-exercise=\"stairs\"]').scrollIntoView({ block: 'start' }); window.scrollBy(0, -80)");
+    const shot = await call("Page.captureScreenshot", { format: "png" });
+    fs.writeFileSync(path.join(os.tmpdir(), "chys-stairs-" + name + ".png"), Buffer.from(shot.data, "base64"));
+  }
+  await call("Emulation.clearDeviceMetricsOverride");
+  const fittedGrowth = await evaluate(`(() => {
+    const sim = document.querySelector('[data-exercise="stairs"] .stairs-sim');
+    return { text: sim.querySelector('.stairs-height-text').textContent,
+      tip: sim.querySelector('.stairs-height-tip').textContent,
+      viewBox: sim.querySelector('.stairs-svg').getAttribute('viewBox'),
+      outline: Number(sim.querySelector('.st-height-outline').getAttribute('height')) };
+  })()`);
+  expect("після перевороту вибрані висоти 6 і 4 дають 10, приріст +2 компенсується зменшенням на 2",
+    fittedGrowth.text.includes("6 + 4 = 10") && fittedGrowth.tip.includes("росте на 2") && fittedGrowth.tip.includes("меншає на 2") &&
+      fittedGrowth.viewBox === "0 0 430 302" && fittedGrowth.outline === 240, JSON.stringify(fittedGrowth));
+  await evaluate(`(() => {
+    const sim = document.querySelector('[data-exercise="stairs"] .stairs-sim');
+    sim.querySelector('.kind-btn[data-step="1"]').click();
+    const range = sim.querySelector('.trainer-range'); range.value = '6'; range.dispatchEvent(new Event('input'));
+  })()`);
 
   // Сходи «Джеміно»: копія, переворот, прямокутник; кожен стовпчик разом із перевернутою копією — повна висота.
   const stairs = JSON.parse(await evaluate(`(async () => {

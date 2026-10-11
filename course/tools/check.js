@@ -895,7 +895,7 @@ const LESSONS = ["l01", "l02", "l03", "l04"];
   );
 
   await require("./check-teaching.js")({ evaluate, expect, go });
-  await require("./check-gauss.js")({ evaluate, expect, go });
+  await require("./check-gauss.js")({ evaluate, expect, go, call });
   await require("./check-parts.js")({ evaluate, expect, go, call });
 
   /* ---------- телефон і планшет ---------- */

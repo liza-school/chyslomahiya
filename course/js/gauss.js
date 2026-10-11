@@ -101,6 +101,8 @@ const GAUSS = (function () {
     const setup = { first: cfg.first || 1, step: cfg.step || 1, count: cfg.count || 10 };
     let nums, mate, kOf, made, fresh, delays, picked, phase;
     let solved = false;
+    let building = false;
+    let pairLabel = null, sumHint = null;
 
     const root = el("div", { class: "sim gauss pairs-sim" + (round ? " round" : "") });
     const task = el("div", { class: "sim-task" });
@@ -119,6 +121,24 @@ const GAUSS = (function () {
     const need = () => (round ? nums.length / 2 : Math.floor(nums.length / 2));
     const pairSum = () => nums[0] + nums[nums.length - 1];
     const middle = () => (!round && nums.length % 2 ? (nums.length - 1) / 2 : -1);
+
+    let views = null;
+    if (cfg.building && !round) {
+      views = el("div", { class: "trainer-kinds pair-views", role: "group", "aria-label": "Як показати пари Гаусса" });
+      [[false, "Арки й відра"], [true, "Стовпчики й вежі"]].forEach(([mode, label]) => {
+        const btn = el("button", { class: "kind-btn" + (!mode ? " on" : ""), type: "button", "data-building": String(mode), "aria-pressed": String(!mode), text: label });
+        btn.addEventListener("click", () => {
+          building = mode;
+          [...views.children].forEach((button) => {
+            button.classList.toggle("on", button === btn);
+            button.setAttribute("aria-pressed", String(button === btn));
+          });
+          draw();
+          if (phase === "pair") say(building ? "Вибери два крайні стовпчики: поставимо один на інший й збудуємо вежу." : "Клацни два крайні числа — зʼявляться арка й відро.");
+        });
+        views.append(btn);
+      });
+    }
 
     let controls = null;
     if (cfg.controls) {
@@ -161,7 +181,9 @@ const GAUSS = (function () {
       task.innerHTML = cfg.intro || autoIntro();
       magic.hidden = true;
       sumBox.textContent = "";
-      say(round ? "Клацни два числа, які разом дають кругле." : "Клацни два числа — над ними виросте арка, а під ними наповниться відро.");
+      pairLabel = null;
+      sumHint = null;
+      say(round ? "Клацни два числа, які разом дають кругле." : building ? "Вибери два крайні стовпчики: поставимо один на інший й збудуємо вежу." : "Клацни два числа — над ними виросте арка, а під ними наповниться відро.");
       draw();
     }
 
@@ -225,13 +247,82 @@ const GAUSS = (function () {
       return box;
     }
 
+    function buildColumn(pic, x, base, width, value, unit, cls) {
+      const column = svg("g", { class: cls, "data-v": value });
+      column.append(svg("rect", { x, y: base - value * unit, width, height: value * unit }));
+      if (unit >= 7) {
+        for (let k = 1; k < value; k++) {
+          column.append(svg("line", { class: "st-cell", x1: x, x2: x + width, y1: base - k * unit, y2: base - k * unit }));
+        }
+      }
+      pic.append(column);
+    }
+
+    function buildRow() {
+      const U = 44, base = 170, unit = 140 / pairSum();
+      const pic = svg("svg", { class: "pair-building-row", viewBox: "0 0 " + (nums.length * U + 24) + " 202", role: "group", "aria-label": "Ряд чисел як стовпчики з кубиків" });
+      pic.style.minWidth = (nums.length * U + 24) + "px";
+      nums.forEach((value, i) => {
+        const moved = mate[i] >= 0 || (phase !== "pair" && i === middle());
+        const x = 12 + i * U;
+        const token = svg("g", { class: "build-token" + tokenClass(i) + (moved ? " moved" : ""), "data-i": i, role: "button", tabindex: 0, "aria-label": "Стовпчик " + value + (moved ? ": уже у вежі" : ": вибрати для пари"), "aria-pressed": String(i === picked) });
+        token.append(svg("rect", { class: "build-hit", x, y: 16, width: U - 4, height: 182 }));
+        buildColumn(token, x + 4, base, U - 12, value, unit, "build-piece original");
+        token.append(svg("text", { class: "build-label", x: x + (U - 4) / 2, y: base + 24, text: String(value) }));
+        token.addEventListener("click", () => pick(i));
+        token.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            pick(i);
+          }
+        });
+        pic.append(token);
+      });
+      return el("div", { class: "pair-building" }, el("b", { text: "1. Кожне число — висота стовпчика" }),
+        el("p", { class: "build-caption", text: "Вибери два стовпчики з протилежних кінців. Їхні кубики перекладемо у спільну вежу." }),
+        el("div", { class: "pair-building-scroll" }, pic));
+    }
+
+    function buildTowers() {
+      const slots = Math.ceil(nums.length / 2), U = 82, base = 170, unit = 140 / pairSum();
+      const pic = svg("svg", { class: "pair-building-towers", viewBox: "0 0 " + (slots * U + 24) + " 208", role: "img", "aria-label": "Вежі з пар: висота " + pairSum() + ", середнє без пари — половина висоти" });
+      pic.style.minWidth = (slots * U + 24) + "px";
+      pic.append(svg("line", { class: "build-level", x1: 12, x2: slots * U + 12, y1: 30, y2: 30 }));
+      for (let a = 0; a < Math.floor(nums.length / 2); a++) {
+        const b = nums.length - 1 - a, x = 12 + a * U;
+        pic.append(svg("rect", { class: "build-placeholder", x: x + 17, y: 30, width: 44, height: 140 }));
+        if (mate[a] < 0) continue;
+        const tower = svg("g", { class: "build-tower p" + (kOf[a] % HUES) + (fresh.has(kOf[a]) ? " fresh" : ""), "data-a": a, "data-b": b });
+        buildColumn(tower, x + 17, base, 44, nums[a], unit, "build-piece low");
+        buildColumn(tower, x + 17, base - nums[a] * unit, 44, nums[b], unit, "build-piece high");
+        tower.append(svg("text", { class: "build-label strong", x: x + 39, y: 22, text: String(nums[a] + nums[b]) }));
+        tower.append(svg("text", { class: "build-label", x: x + 39, y: base + 25, text: nums[a] + " + " + nums[b] }));
+        pic.append(tower);
+      }
+      const m = middle();
+      if (phase !== "pair" && m >= 0) {
+        const x = 12 + (slots - 1) * U + 17;
+        const lonely = svg("g", { class: "build-tower lonely", "data-a": m });
+        buildColumn(lonely, x, base, 44, nums[m], unit, "build-piece low");
+        lonely.append(svg("text", { class: "build-label strong", x: x + 22, y: base - nums[m] * unit - 8, text: String(nums[m]) }));
+        lonely.append(svg("text", { class: "build-label", x: x + 22, y: base + 25, text: "без пари" }));
+        pic.append(lonely);
+      }
+      const caption = phase === "pair" ? "Синій стовпчик — менший доданок, золотий — більший. Разом у кожній вежі " + pairSum() + " кубиків." :
+        need() + " " + plural(need(), "вежа", "вежі", "веж") + " по " + pairSum() + (m >= 0 ? " і ще " + nums[m] + " без пари" : "") + ". Кубики лише переклали — загальна кількість не змінилася. Порахуй її.";
+      return el("div", { class: "pair-building" }, el("b", { text: "2. З пар будуємо вежі однакової висоти" }),
+        el("div", { class: "pair-building-scroll" }, pic), el("p", { class: "build-caption", "aria-live": "polite", text: caption }));
+    }
+
     function draw() {
       stage.textContent = "";
-      stage.append(nums.length <= 20 ? rainbow() : chips());
+      stage.append(building ? buildRow() : nums.length <= 20 ? rainbow() : chips());
       shelf.textContent = "";
+      shelf.classList.toggle("building", building);
       shelf.classList.toggle("small", nums.length > 20);
       const pause = Math.min(90, 1400 / Math.max(1, delays.size));
-      made.forEach(([a, b], k) => {
+      if (building) shelf.append(buildTowers());
+      else made.forEach(([a, b], k) => {
         const lo = Math.min(nums[a], nums[b]);
         const hi = Math.max(nums[a], nums[b]);
         const cup = bucket(lo, hi, lo + hi, " p" + (k % HUES) + (fresh.has(k) ? " fresh" : ""));
@@ -239,7 +330,9 @@ const GAUSS = (function () {
         shelf.append(cup);
       });
       const m = middle();
-      if (phase !== "pair" && m >= 0) shelf.append(bucket(nums[m], null, pairSum(), " lonely"));
+      if (!building && phase !== "pair" && m >= 0) shelf.append(bucket(nums[m], null, pairSum(), " lonely"));
+      if (pairLabel) pairLabel.textContent = building ? "Веж:" : "Відер:";
+      if (sumHint) sumHint.textContent = "по " + pairSum() + (m >= 0 ? (building ? " і ще число без пари (" : " і ще пів відра (") + nums[m] + ")" : "") + " → разом:";
       stat.textContent = "Пар: " + made.length + " з " + need();
       fresh.clear();
       delays.clear();
@@ -288,7 +381,7 @@ const GAUSS = (function () {
         const step = nums[1] - nums[0];
         magic.hidden = false;
         say("Знову " + s + "! Ліве число щоразу більшає на " + step + ", праве — меншає на " + step +
-          ", тож відро наповнюється до того самого краю. Решту пар можна скласти закляттям.", "ok");
+          (building ? ", тож вежі мають ту саму висоту. Решту пар можна скласти закляттям." : ", тож відро наповнюється до того самого краю. Решту пар можна скласти закляттям."), "ok");
       } else if (made.length === 1) say(nums[a] + " + " + nums[b] + " = " + s + ". Тепер наступна пара з двох кінців.", "ok");
       else say("Знову " + s + ".", "ok");
       draw();
@@ -315,8 +408,8 @@ const GAUSS = (function () {
       const S = pairSum();
       draw();
       if (round) say("Усі числа в парах, і кожне відро — 100. Тепер склади все разом.", "");
-      else if (m >= 0) say("Пари скінчилися, а " + nums[m] + " лишилося посередині без пари. Воно наливає рівно пів відра: " + S + " : 2 = " + nums[m] + ".", "");
-      else say("Усі числа в парах, і всі відра однакові — по " + S + ".", "");
+      else if (m >= 0) say("Пари скінчилися, а " + nums[m] + " лишилося посередині без пари. " + (building ? "Цей стовпчик — половина висоти вежі: " : "Воно наливає рівно пів відра: ") + S + " : 2 = " + nums[m] + ".", "");
+      else say(building ? "Усі стовпчики переклали в пари. Кожна вежа має висоту " + S + ". Порахуй, скільки кубиків у всіх вежах." : "Усі числа в парах, і всі відра однакові — по " + S + ".", "");
       buildSumForm();
     }
 
@@ -331,10 +424,12 @@ const GAUSS = (function () {
         sumBox.append(el("span", { text: "Разом:" }), totalField, check);
       } else {
         pairsField = numberField(false);
+        pairLabel = el("span", { text: building ? "Веж:" : "Відер:" });
+        sumHint = el("span", { text: "по " + S + (m >= 0 ? (building ? " і ще число без пари (" : " і ще пів відра (") + nums[m] + ")" : "") + " → разом:" });
         sumBox.append(
-          el("span", { text: "Відер:" }),
+          pairLabel,
           pairsField,
-          el("span", { text: "по " + S + (m >= 0 ? " і ще пів відра (" + nums[m] + ")" : "") + " → разом:" }),
+          sumHint,
           totalField,
           check
         );
@@ -345,13 +440,13 @@ const GAUSS = (function () {
         const answer = readNum(totalField.value);
         const right = total(nums);
         if (pairsField && readNum(pairsField.value) !== need()) {
-          say("Повних відер стільки, скільки пар на полиці.", "no");
+          say(building ? "Повних веж стільки, скільки пар стовпчиків." : "Повних відер стільки, скільки пар на полиці.", "no");
           return;
         }
         if (answer !== right) {
           let hint = "Склади суми з полиці ще раз.";
-          if (!round && m >= 0 && answer === need() * S) hint = "Це лише повні відра. А пів відра — " + nums[m] + "?";
-          else if (!round && answer === nums.length * S) hint = "Удвічі забагато: відер не " + nums.length + ", а " + need() + ".";
+          if (!round && m >= 0 && answer === need() * S) hint = building ? "Це лише повні вежі. А число без пари — " + nums[m] + "?" : "Це лише повні відра. А пів відра — " + nums[m] + "?";
+          else if (!round && answer === nums.length * S) hint = "Удвічі забагато: " + (building ? "веж" : "відер") + " не " + nums.length + ", а " + need() + ".";
           else if (!round) hint = need() + " · " + S + (m >= 0 ? " + " + nums[m] : "") + " — порахуй ще раз.";
           say(hint, "no");
           return;
@@ -373,7 +468,7 @@ const GAUSS = (function () {
     magic.addEventListener("click", castMagic);
     reset.addEventListener("click", start);
     /* append(null) вставив би слово «null»: повзунок є лише в пісочниці. */
-    root.append(...[controls, task, stat, stage, shelf, verdict, sumBox, el("div", { class: "toolbar" }, magic, reset)].filter(Boolean));
+    root.append(...[controls, views, task, stat, stage, shelf, verdict, sumBox, el("div", { class: "toolbar" }, magic, reset)].filter(Boolean));
     start();
     return root;
   }
@@ -430,15 +525,21 @@ const GAUSS = (function () {
     const setup = { first: cfg.first || 1, step: cfg.step || 1, count: cfg.count || 6 };
     let phase = 0;
     let copy = null;
+    let picture = null;
+    let selected = 1;
     let solved = false;
 
     const root = el("div", { class: "sim gauss stairs-sim" });
     const task = el("div", { class: "sim-task" });
     const stat = el("div", { class: "sim-stat" });
     const host = el("div", { class: "stairs-host" });
+    const heightText = el("div", { class: "stairs-height-text", "aria-live": "polite" });
+    const heightTip = el("p", { class: "stairs-height-tip" });
+    const heightGuide = el("div", { class: "stairs-height-guide" },
+      el("b", { text: "Число = висота стовпчика" }), heightText, heightTip);
     const verdict = el("div", { class: "sim-verdict" });
     const ask = el("div", { class: "pair-sum" });
-    const gem = el("button", { class: "btn", type: "button", text: "Джеміно ✨" });
+    const gem = el("button", { class: "btn", type: "button", text: "Джеміно · зроби копію ✨" });
     const flip = el("button", { class: "btn", type: "button", text: "Переверни й приклади ↻" });
     const reset = el("button", { class: "ghost-btn", type: "button", text: "Спочатку ↺" });
 
@@ -450,14 +551,14 @@ const GAUSS = (function () {
     let controls = null;
     if (cfg.controls) {
       const shown = el("b", { text: String(setup.count) });
-      const range = el("input", { class: "trainer-range", type: "range", min: 2, max: 20, value: setup.count, "aria-label": "Скільки сходинок" });
+      const range = el("input", { class: "trainer-range", type: "range", min: 2, max: 20, value: setup.count, "aria-label": "Скільки стовпчиків" });
       range.addEventListener("input", () => {
         setup.count = Number(range.value);
         shown.textContent = range.value;
         start();
       });
       const kinds = el("div", { class: "trainer-kinds" });
-      [[1, "сходинка 1"], [2, "сходинка 2"], [5, "сходинка 5"]].forEach(([step, label]) => {
+      [[1, "Крок +1"], [2, "Крок +2"], [5, "Крок +5"]].forEach(([step, label]) => {
         const btn = el("button", { class: "kind-btn" + (step === setup.step ? " on" : ""), type: "button", "data-step": step, text: label });
         btn.addEventListener("click", () => {
           setup.step = step;
@@ -474,32 +575,85 @@ const GAUSS = (function () {
     const S = () => setup.first + last();
     const answer = () => sum(setup.first, setup.step, setup.count);
 
+    function showHeight(index) {
+      selected = index;
+      picture.querySelector(".st-growth")?.remove();
+      const columns = [...picture.querySelectorAll(".gold .st-col")];
+      columns.forEach((column, i) => column.setAttribute("aria-pressed", String(i === index)));
+      const column = columns[index];
+      const value = Number(column.getAttribute("data-v"));
+      const x = Number(column.getAttribute("x"));
+      const y = Number(column.getAttribute("y"));
+      const width = Number(column.getAttribute("width"));
+      const height = Number(column.getAttribute("height"));
+      const highlight = svg("g", { class: "st-growth", "aria-hidden": "true" });
+      if (phase >= 2) {
+        const blue = S() - value;
+        highlight.append(svg("rect", { class: "st-height-outline", x, y: STAIRS.T, width, height: STAIRS.H }));
+        heightText.textContent = "Золотий стовпчик: " + value + ". Синій над ним: " + blue + ". Разом: " + value + " + " + blue + " = " + S() + " кубиків у висоту.";
+        heightTip.textContent = "Праворуч золото росте на " + setup.step + ", синя частина меншає на " + setup.step + ". Загальна висота не змінюється. Натисни інший золотий стовпчик — перевір.";
+      } else {
+        const previous = index ? Number(columns[index - 1].getAttribute("data-v")) : 0;
+        const previousHeight = index ? Number(columns[index - 1].getAttribute("height")) : 0;
+        highlight.append(svg("rect", { class: "st-rise", x, y, width, height: height - previousHeight }));
+        heightText.textContent = index ?
+          "Попередній стовпчик: " + previous + " " + plural(previous, "кубик", "кубики", "кубиків") + " у висоту. Додали " + setup.step + " зверху — стало " + value + ". Крок: " + value + " − " + previous + " = " + setup.step + "." :
+          "Перше число — " + value + ". Перший стовпчик має " + value + " " + plural(value, "кубик", "кубики", "кубиків") + " у висоту. Це старт сходів.";
+        heightTip.textContent = index ?
+          "Зелений шар — додані зверху кубики. Кожен наступний стовпчик вищий на той самий крок. Натисни інший стовпчик." :
+          "Перше число задає стартову висоту, а крок — скільки кубиків додаємо до наступного стовпчика. Натисни другий стовпчик.";
+      }
+      picture.append(highlight);
+    }
+
     function start() {
       const { first, step, count: n } = setup;
       const { W, H, gap, L, T, B } = STAIRS;
       phase = 0;
+      selected = Math.min(1, n - 1);
       root.classList.remove("fitted");
       host.textContent = "";
-      const pic = svg("svg", { class: "stairs-svg", viewBox: "0 0 " + (L + 2 * W + gap + 8) + " " + (T + H + B), role: "img", "aria-label": "Сходи з кубиків" });
+      const pic = svg("svg", { class: "stairs-svg", viewBox: "0 0 " + (L + W + 12) + " " + (T + H + B), role: "group", "aria-label": "Ряд чисел як сходи: кожне число — висота стовпчика у кубиках" });
+      picture = pic;
       pic.append(stairsColumns(first, step, n, "gold", false));
+      pic.querySelectorAll(".gold .st-col").forEach((column, index) => {
+        column.setAttribute("tabindex", "0");
+        column.setAttribute("role", "button");
+        column.setAttribute("aria-label", "Число " + column.getAttribute("data-v") + ": показати висоту стовпчика");
+        column.addEventListener("click", () => showHeight(index));
+        column.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            showHeight(index);
+          }
+        });
+      });
       copy = stairsColumns(first, step, n, "st-copy blue hidden", false);
       copy.style.transformOrigin = L + W / 2 + "px " + (T + H / 2) + "px";
       copy.style.transform = "translate(" + (W + gap) + "px, 0px) rotate(0deg)";
       pic.append(copy);
+      copy.addEventListener("transitionend", (event) => {
+        if (event.propertyName === "transform" && event.target === copy && phase >= 2) {
+          pic.setAttribute("viewBox", "0 0 " + (L + W + 12) + " " + (T + H + B));
+        }
+      });
       stairsLabels(first, step, n, pic);
       host.append(pic);
-      const shown = n <= 6 ? Array.from({ length: n }, (_, i) => first + i * step).join(" + ") : first + " + " + (first + step) + " + … + " + last();
-      task.innerHTML = cfg.intro || "Сходи з кубиків: <b>" + shown + "</b>. Скільки кубиків у сходах — не рахуючи по одному?";
-      stat.textContent = "Стовпчиків: " + n + ", найнижчий — " + first + ", найвищий — " + last() + ".";
+      const shown = n <= 6 ? Array.from({ length: n }, (_, i) => first + i * step).join(", ") : first + ", " + (first + step) + ", …, " + last();
+      task.innerHTML = cfg.intro || "Наш ряд: <b>" + shown + "</b>. Кожне число стало стовпчиком: скільки в ньому кубиків, така й висота.";
+      stat.textContent = "Стовпчиків: " + n + ", крок: +" + step + ", найнижчий — " + first + ", найвищий — " + last() + ".";
       gem.disabled = false;
       flip.disabled = true;
       ask.textContent = "";
-      say("Натисни «Джеміно» — закляття зробить точну копію сходів.");
+      showHeight(selected);
+      say("Спершу роздивись стовпчики. Потім натисни «Джеміно» — зроби другу таку саму драбинку.");
     }
 
     function copyIt() {
       if (phase !== 0) return;
       phase = 1;
+      const { W, H, gap, L, T, B } = STAIRS;
+      picture.setAttribute("viewBox", "0 0 " + (L + 2 * W + gap + 8) + " " + (T + H + B));
       copy.classList.remove("hidden");
       gem.disabled = true;
       flip.disabled = false;
@@ -512,6 +666,11 @@ const GAUSS = (function () {
       copy.style.transform = "translate(0px, 0px) rotate(180deg)";
       root.classList.add("fitted");
       flip.disabled = true;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const { W, H, L, T, B } = STAIRS;
+        picture.setAttribute("viewBox", "0 0 " + (L + W + 12) + " " + (T + H + B));
+      }
+      showHeight(selected);
       const n = setup.count;
       stat.textContent = "Вийшов прямокутник: " + n + " " + plural(n, "стовпчик", "стовпчики", "стовпчиків") +
         ", кожен заввишки " + setup.first + " + " + last() + " = " + S() + ".";
@@ -554,7 +713,9 @@ const GAUSS = (function () {
     gem.addEventListener("click", copyIt);
     flip.addEventListener("click", fit);
     reset.addEventListener("click", start);
-    root.append(...[controls, task, stat, host, verdict, ask, el("div", { class: "toolbar" }, gem, flip, reset)].filter(Boolean));
+    root.append(...[controls, task, stat, heightGuide, host,
+      el("p", { class: "stairs-row-caption", text: "Числа під стовпчиками — наш ряд. Висоти над ними — ті самі числа." }),
+      verdict, ask, el("div", { class: "toolbar" }, gem, flip, reset)].filter(Boolean));
     start();
     return root;
   }
