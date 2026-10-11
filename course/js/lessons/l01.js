@@ -11,6 +11,13 @@ COURSE.addLesson({
     "рахувати, скільки зважувань потрібно: 3, 9, 27, 81;",
     "розвʼязувати задачі, де невідомо навіть, легша фальшива чи важча.",
   ],
+  parts: [
+    { id: "first-scales", title: "Три відповіді терезів", start: 0 },
+    { id: "split-and-practice", title: "Поділ і перші задачі", start: 11 },
+    { id: "harder-coins", title: "Більше монет, нові підозри", start: 21 },
+    { id: "unknown-direction", title: "Легша чи важча?", start: 27 },
+    { id: "coin-limits", title: "Межі й останні випробування", start: 30 },
+  ],
   blocks: [
     {
       type: "story",

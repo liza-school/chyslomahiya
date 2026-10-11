@@ -9,6 +9,12 @@ COURSE.addLesson({
     "пояснювати сусідні межі 12 / 13 / 14 і 39 / 40 / 41",
     "будувати перше зважування так, щоб усі три гілки поміщалися в решту кроків",
   ],
+  parts: [
+    { id: "meet-standard", title: "Навіщо потрібен еталон", start: 0 },
+    { id: "three-limits", title: "Межі й мітки монет", start: 7 },
+    { id: "larger-vault", title: "Дванадцять і сорок одна", start: 14 },
+    { id: "next-limit", title: "Наступна сходинка й тренажер", start: 17 },
+  ],
   blocks: [
     {
       type: "story",

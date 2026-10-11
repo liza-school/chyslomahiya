@@ -5,12 +5,15 @@ const COURSE = (function () {
   const OLD_STORE_KEY = "fimli.v1"; // курс звався інакше; прогрес переїжджає сам
   const lessons = [];
 
-  let store = { done: {} };
+  let store = { done: {}, parts: {}, today: {} };
   try {
     const saved = localStorage.getItem(STORE_KEY) || localStorage.getItem(OLD_STORE_KEY) || "{}";
     store = Object.assign(store, JSON.parse(saved));
   } catch (e) {
     /* зіпсоване сховище просто ігноруємо */
+  }
+  for (const field of ["done", "parts", "today"]) {
+    if (!store[field] || typeof store[field] !== "object" || Array.isArray(store[field])) store[field] = {};
   }
 
   function save() {
@@ -289,23 +292,34 @@ const COURSE = (function () {
     },
 
     /* Список заданого: чотири задачі, до кожної можна стрибнути одним дотиком. */
-    homework(b) {
+    homework(b, ctx) {
       const list = el("div", { class: "hw-list" });
       b.items.forEach((item) => {
+        const mark = el("span", { class: "hw-done-mark" });
         const jump = el(
           "button",
           { class: "hw-item", type: "button" },
           el("span", { class: "hw-num", text: String(item.num) }),
           el("span", { class: "hw-title", text: item.title }),
-          item.note ? el("span", { class: "hw-note", text: item.note }) : null
+          item.note ? el("span", { class: "hw-note", text: item.note }) : null,
+          mark
         );
         jump.addEventListener("click", () => {
           const target = document.querySelector('[data-problem="' + item.num + '"]');
           if (target) target.scrollIntoView({ block: "start", behavior: "smooth" });
         });
+        const index = ctx.lesson.blocks.findIndex((block) => block.type === "problem" && String(block.num) === String(item.num));
+        const drawItem = () => {
+          const done = index >= 0 && isDone(blockKey(ctx.lesson, ctx.lesson.blocks[index], index));
+          mark.textContent = done ? "✓" : "";
+          jump.classList.toggle("hw-done", done);
+          jump.setAttribute("aria-label", "Задача " + item.num + ": " + item.title + (done ? " — виконано" : " — ще не виконано"));
+        };
+        progressWatchers.push(drawItem);
+        drawItem();
         list.append(jump);
       });
-      return card("homework", b.title || "Сова принесла завдання", null, [b.html ? el("div", { html: b.html }) : null, list]);
+      return card("homework", b.title || "Сова принесла завдання", null, [homeworkProgress(ctx.lesson), b.html ? el("div", { html: b.html }) : null, list]);
     },
 
     /* Тренажер: будь-яка кількість монет і будь-який режим, на вибір дитини. */
@@ -580,15 +594,61 @@ const COURSE = (function () {
     return lesson.id + ":" + (block.id || block.type + index);
   }
 
-  function lessonStats(lesson) {
+  function lessonStats(lesson, start = 0, end = lesson.blocks.length) {
     let done = 0;
     let total = 0;
-    lesson.blocks.forEach((block, index) => {
-      if (!CHECKABLE.has(block.type)) return;
+    // Індекси беремо з початкового blocks, щоб зберегти старі ключі прогресу.
+    for (let index = start; index < end; index++) {
+      const block = lesson.blocks[index];
+      if (!CHECKABLE.has(block.type)) continue;
       total += 1;
       if (isDone(blockKey(lesson, block, index))) done += 1;
-    });
+    }
     return { done: done, total: total, pct: total ? Math.round((done / total) * 100) : 0 };
+  }
+
+  const isPartDone = (lesson, part) => Boolean(store.parts[blockKey(lesson, part, 0)]);
+
+  function partsStats(lesson) {
+    const parts = lesson.parts || [];
+    return { done: parts.filter((part) => isPartDone(lesson, part)).length, total: parts.length };
+  }
+
+  function todayPart(lesson) {
+    const parts = lesson.parts || [];
+    return parts.find((part) => part.id === store.today[lesson.id] && !isPartDone(lesson, part)) ||
+      parts.find((part) => !isPartDone(lesson, part));
+  }
+
+  function homeworkStats(lesson) {
+    const stats = { required: { done: 0, total: 0 }, optional: { done: 0, total: 0 } };
+    lesson.blocks.forEach((block, index) => {
+      if (block.type !== "problem" || !block.homework) return;
+      const group = /для бажаючих/i.test(String(block.homework)) ? stats.optional : stats.required;
+      group.total += 1;
+      if (isDone(blockKey(lesson, block, index))) group.done += 1;
+    });
+    return stats;
+  }
+
+  function homeworkProgress(lesson) {
+    const required = el("div", { class: "hw-required" });
+    const optional = el("div", { class: "hw-optional" });
+    const node = el("div", { class: "homework-progress", "aria-live": "polite" }, required, optional);
+    const draw = () => {
+      const stats = homeworkStats(lesson);
+      const all = stats.required.total > 0 && stats.required.done === stats.required.total;
+      const label = stats.optional.total ? "Обовʼязкове домашнє" : "Домашнє";
+      required.textContent = stats.required.total ?
+        (all ? (stats.optional.total ? label : "Усе домашнє") + " виконано ✓ · " : label + ": ") + stats.required.done + " з " + stats.required.total :
+        stats.optional.total ? "Обовʼязкового домашнього немає" : "Домашнє не задано";
+      optional.textContent = stats.optional.total ? "Для бажаючих: " + stats.optional.done + " з " + stats.optional.total + (stats.optional.done === stats.optional.total ? " ✓" : "") : "";
+      optional.hidden = !stats.optional.total;
+      node.classList.toggle("hw-all-done", all);
+    };
+    progressWatchers.push(draw);
+    draw();
+    return node;
   }
 
   function overallStats() {
@@ -635,6 +695,7 @@ const COURSE = (function () {
     const cards = el("div", { class: "cards" });
     lessons.forEach((lesson) => {
       const stats = lessonStats(lesson);
+      const parts = partsStats(lesson);
       cards.append(
         el(
           "a",
@@ -642,21 +703,116 @@ const COURSE = (function () {
           el("div", { class: "num", text: "Заняття " + lesson.num }),
           el("div", { class: "title", text: lesson.title }),
           el("div", { class: "sub", text: lesson.subtitle || "" }),
+          parts.total ? el("div", { class: "stat part-card-stat", text: "Частин пройдено: " + parts.done + " з " + parts.total }) : null,
           el("div", { class: "stat", text: "Завдань: " + stats.done + " / " + stats.total }),
-          bar(stats.pct)
+          bar(stats.pct),
+          homeworkProgress(lesson)
         )
       );
     });
 
     const resetBtn = el("button", { class: "ghost-btn", text: "Скинути весь прогрес" });
     resetBtn.addEventListener("click", () => {
-      if (!confirm("Стерти позначки про виконані завдання?")) return;
-      store = { done: {} };
+      if (!confirm("Стерти позначки про виконані завдання й пройдені частини?")) return;
+      store = { done: {}, parts: {}, today: {} };
       save();
       render();
     });
 
     app.append(hero, cards, el("footer", { class: "page-foot" }, resetBtn));
+  }
+
+  function renderParts(app, lesson) {
+    const summary = el("div", { class: "parts-summary", "aria-live": "polite" });
+    const todayLabel = el("p", { class: "parts-today" });
+    const continueBtn = el("button", { class: "btn", type: "button", text: "До частини на сьогодні ↓" });
+    const nav = el("nav", { class: "parts-nav", "aria-label": "Частини заняття", style: "--part-count: " + lesson.parts.length });
+    const views = [];
+    const jump = (part) => document.getElementById("part-" + lesson.id + "-" + part.id).scrollIntoView({ block: "start", behavior: "smooth" });
+    continueBtn.addEventListener("click", () => jump(todayPart(lesson)));
+    app.append(el("div", { class: "parts-roadmap" },
+      el("h2", { text: "Твій шлях у цьому занятті" }),
+      summary, todayLabel,
+      el("p", { class: "parts-help", text: "Пройшла матеріал — познач частину. Задачі можна доробити пізніше. Наступну частину пропонуємо на сьогодні; можна обрати іншу." }),
+      continueBtn, nav
+    ));
+
+    lesson.parts.forEach((part, position) => {
+      const end = lesson.parts[position + 1]?.start ?? lesson.blocks.length;
+      const state = el("span", { class: "part-state" });
+      const counter = el("span", { class: "part-counter" });
+      const navState = el("span", { class: "part-nav-state" });
+      const navCounter = el("span", { class: "part-nav-counter" });
+      const navBtn = el("button", { class: "part-link", type: "button", "data-part-link": part.id },
+        el("span", { class: "part-number", text: "Частина " + (position + 1) }),
+        el("span", { class: "part-nav-title", text: part.title }), navState, navCounter
+      );
+      navBtn.addEventListener("click", () => jump(part));
+      nav.append(navBtn);
+
+      const choose = el("button", { class: "ghost-btn part-today-btn", type: "button", "aria-label": "Обрати на сьогодні: " + part.title });
+      choose.addEventListener("click", () => {
+        store.today[lesson.id] = part.id;
+        save();
+        refreshProgress();
+      });
+      const complete = el("button", { class: "btn part-complete", type: "button" });
+      complete.addEventListener("click", () => {
+        const key = blockKey(lesson, part, 0);
+        if (isPartDone(lesson, part)) delete store.parts[key];
+        else {
+          store.parts[key] = true;
+          if (store.today[lesson.id] === part.id) delete store.today[lesson.id];
+        }
+        save();
+        refreshProgress();
+      });
+      const section = el("section", { class: "lesson-part", id: "part-" + lesson.id + "-" + part.id, "data-part": part.id },
+        el("header", { class: "part-heading" },
+          el("div", { class: "kicker", text: "частина " + (position + 1) + " з " + lesson.parts.length }),
+          el("h2", { text: part.title }),
+          el("div", { class: "part-meta" }, state, counter),
+          choose
+        )
+      );
+      for (let index = part.start; index < end; index++) {
+        const block = lesson.blocks[index];
+        const make = BLOCKS[block.type];
+        if (make) section.append(make(block, { key: blockKey(lesson, block, index), lesson }));
+      }
+      section.append(el("footer", { class: "part-footer" }, complete));
+      app.append(section);
+      views.push({ part, end, section, state, counter, navBtn, navState, navCounter, choose, complete });
+    });
+
+    const drawParts = () => {
+      const stats = partsStats(lesson);
+      const today = todayPart(lesson);
+      summary.textContent = "Частин пройдено: " + stats.done + " з " + stats.total;
+      todayLabel.textContent = today ? "На сьогодні: частина " + (lesson.parts.indexOf(today) + 1) + " — " + today.title : "Усі частини пройдено ✓";
+      continueBtn.hidden = !today;
+      views.forEach((view) => {
+        const done = isPartDone(lesson, view.part);
+        const current = today === view.part;
+        const tasks = lessonStats(lesson, view.part.start, view.end);
+        const status = done ? "✓ Пройдено" : current ? "На сьогодні" : tasks.done ? "Розпочато" : "Попереду";
+        view.state.textContent = view.navState.textContent = status;
+        view.counter.textContent = view.navCounter.textContent = "Задачі: " + tasks.done + " з " + tasks.total;
+        for (const node of [view.section, view.navBtn]) {
+          node.classList.toggle("part-done", done);
+          node.classList.toggle("part-current", current);
+        }
+        if (current) view.navBtn.setAttribute("aria-current", "step");
+        else view.navBtn.removeAttribute("aria-current");
+        view.choose.hidden = done;
+        view.choose.disabled = current;
+        view.choose.textContent = current ? "На сьогодні" : "Обрати на сьогодні";
+        view.complete.textContent = done ? "✓ Пройдено · зняти позначку" : "Частину пройдено ✓";
+        view.complete.setAttribute("aria-pressed", String(done));
+      });
+    };
+    progressWatchers.push(drawParts);
+    drawParts();
   }
 
   function renderLesson(app, lesson) {
@@ -686,12 +842,15 @@ const COURSE = (function () {
     drawScore();
     progressWatchers.push(drawScore);
     app.append(progressLine);
+    app.append(el("div", { class: "homework-overview" }, homeworkProgress(lesson)));
 
-    lesson.blocks.forEach((block, index) => {
-      const make = BLOCKS[block.type];
-      if (!make) return;
-      app.append(make(block, { key: blockKey(lesson, block, index) }));
-    });
+    if (lesson.parts && lesson.parts.length) renderParts(app, lesson);
+    else {
+      lesson.blocks.forEach((block, index) => {
+        const make = BLOCKS[block.type];
+        if (make) app.append(make(block, { key: blockKey(lesson, block, index), lesson }));
+      });
+    }
 
     const position = lessons.indexOf(lesson);
     const prev = lessons[position - 1];
