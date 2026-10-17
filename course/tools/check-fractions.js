@@ -6,6 +6,11 @@ module.exports = async function checkFractions({ evaluate, expect, go }) {
     const g = gcdB(BigInt(n), BigInt(d));
     return BigInt(n) / g + "/" + BigInt(d) / g;
   };
+  const add = (first, step, count) => {
+    let sum = 0;
+    for (let i = 0; i < count; i++) sum += first + i * step;
+    return sum;
+  };
   const prod = (list) => list.reduce((a, b) => a * BigInt(b), 1n);
 
   /* Те, що задано в підручнику, переписане «сирими» числами. */
@@ -17,6 +22,7 @@ module.exports = async function checkFractions({ evaluate, expect, go }) {
     "3.2": red(12, 60), "4.2": red(18, 60), "5.2": red(15, 90), "6.2": red(45, 180),
     "7.2": red(11 + 1, 24), "7.4": red(17 - 7, 20),
     "8.2": red(fact(4n), fact(7n)), "8.6": red(fact(4n) * fact(9n), fact(5n) * fact(8n)),
+    "п1": red(add(1, 1, 10), add(1, 1, 20)), "п2": red(gcdB(12, 18), 18), "п3": red(9, 27), "п4": red(add(1, 1, 10), add(3, 3, 10)),
     "9.1": red(559, 767), "9.2": red(1757, 1799), "9.3": red(2159, 4471), "9.4": red(3401, 4237), "9.5": red(3379, 4619), "9.6": red(737, 803),
   };
 
