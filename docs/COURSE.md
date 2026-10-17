@@ -181,6 +181,8 @@ parts: [
 | `pairs` | ряд чисел парами з двох кінців: арки, відра пар, закляття, підсумок | `first`, `step`, `count` або `rule: "round"` + `numbers`, `controls`, `intro`, `html`, `title`, `id` |
 | `stairs` | сходи «Джеміно»: копія, переворот, прямокутник, половина | `first`, `step`, `count`, `controls`, `intro`, `html`, `title`, `id` |
 | `piles` | гирі в купки рівної маси, лічильник способів | `weights`, `piles`, `names`, `unit`, `intro`, `html`, `title`, `id` |
+| `fraction` | закляття скорочення: дріб клітинками, `÷k` лише на спільний дільник, `×k` | `num`, `den`, `goal` (`"play"` — пісочниця, інакше до нескоротного), `intro`, `html`, `title`, `id` |
+| `euclid` | прямокутник `a × b`, відрізання квадратів, таблиця ділень, відповідь — сторона останнього квадрата (НСД) | `a`, `b`, `controls`, `intro`, `html`, `title`, `id` |
 | `homework` | список заданого, зі стрибком до задачі | `items: [{num, title, note}]`, `html`, `title` |
 | `problem` | задача | `num`, `title`, `question`, `hints`, `hint`, `solution`, `sim`, `jugs`, `map`, `pairs`, `stairs`, `piles` або `answer`, `homework` |
 | `quiz` | одна правильна відповідь | `question`, `options`, `answer`, `explain`, `wrong` |
@@ -188,7 +190,7 @@ parts: [
 | `order` | поставити по порядку | `question`, `items` (у правильному порядку), `explain` |
 | `input` | вписати число або слово | `question`, `accept: [варіанти]`, `hint`, `placeholder`, `explain` |
 
-`quiz`, `multi`, `order`, `input`, `problem`, `scales`, `trainer`, `jugs`, `jugtrainer`, `jugmap`, `pairs`, `stairs` і `piles` рахуються в прогресі — їм потрібен свій `id`
+`quiz`, `multi`, `order`, `input`, `problem`, `scales`, `trainer`, `jugs`, `jugtrainer`, `jugmap`, `pairs`, `stairs`, `piles`, `fraction` і `euclid` рахуються в прогресі — їм потрібен свій `id`
 (короткий рядок: `q1`, `p7`, `sim0`). Відповідь у `input` порівнюється мʼяко: регістр,
 апостроф, зайві пробіли й крапка в кінці не впливають.
 

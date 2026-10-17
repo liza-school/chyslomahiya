@@ -103,6 +103,8 @@ const COURSE = (function () {
     pairs: "пари",
     stairs: "сходи",
     piles: "купки",
+    fraction: "дроби",
+    euclid: "Евклід",
     homework: "домашнє",
   };
 
@@ -359,6 +361,8 @@ const COURSE = (function () {
     pairs: (b, ctx) => gaussBlock(b, ctx, GAUSS.pairs, "Пари з двох кінців"),
     stairs: (b, ctx) => gaussBlock(b, ctx, GAUSS.stairs, "Сходи Джеміно"),
     piles: (b, ctx) => gaussBlock(b, ctx, GAUSS.piles, "Купки рівної маси"),
+    fraction: (b, ctx) => gaussBlock(b, ctx, FRAC.cut, "Закляття скорочення"),
+    euclid: (b, ctx) => gaussBlock(b, ctx, FRAC.euclid, "Прямокутник і квадрати"),
 
     /* Граф станів простого прикладу: крок за кроком, обидві доріжки. Нічого не зараховує — це картинка. */
     jugwalk: (b) =>
@@ -588,7 +592,7 @@ const COURSE = (function () {
 
   /* ---------- прогрес ---------- */
 
-  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles"]);
+  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid"]);
 
   function blockKey(lesson, block, index) {
     return lesson.id + ":" + (block.id || block.type + index);
