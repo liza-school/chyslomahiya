@@ -22,7 +22,7 @@ module.exports = async function checkFractions({ evaluate, expect, go }) {
     "3.2": red(12, 60), "4.2": red(18, 60), "5.2": red(15, 90), "6.2": red(45, 180),
     "7.2": red(11 + 1, 24), "7.4": red(17 - 7, 20),
     "8.2": red(fact(4n), fact(7n)), "8.6": red(fact(4n) * fact(9n), fact(5n) * fact(8n)),
-    "п1": red(add(1, 1, 10), add(1, 1, 20)), "п2": red(gcdB(12, 18), 18), "п3": red(9, 27), "п4": red(add(1, 1, 10), add(3, 3, 10)),
+    "п1": red(add(1, 1, 10), add(1, 1, 20)), "п2": red(18, 30), "п3": red(9, 27), "п4": red(add(1, 1, 10), add(3, 3, 10)),
     "9.1": red(559, 767), "9.2": red(1757, 1799), "9.3": red(2159, 4471), "9.4": red(3401, 4237), "9.5": red(3379, 4619), "9.6": red(737, 803),
   };
 
@@ -68,6 +68,20 @@ module.exports = async function checkFractions({ evaluate, expect, go }) {
   expect("задачі 10 і 11 приймають правильні відповіді", extras === "", extras);
 
   /* Закляття скорочення: пісочниця. */
+  /* Пісочниця: дільник 3 зі свіжого стану дає 4/6. */
+  const by3 = await evaluate(`(async () => {
+    const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+    const block = document.querySelector('[data-exercise="sim-play"]');
+    const k = () => Number(block.querySelector('.frac-k').textContent);
+    while (k() < 3) block.querySelector('[data-act="more"]').click();
+    block.querySelector('[data-act="cut"]').click(); await pause(5);
+    const out = block.querySelector('.frac-now').textContent + '/' + block.querySelectorAll('.frac-cell').length + '/' + block.querySelectorAll('.frac-cell.on').length;
+    block.querySelector('.frac-controls > .ghost-btn:last-child').click(); await pause(5);
+    while (k() > 2) block.querySelector('[data-act="less"]').click();
+    return out + '|' + block.querySelector('.frac-now').textContent;
+  })()`);
+  expect("пісочниця: 12/18 ÷ 3 = 4/6, а «Спочатку» повертає 12/18", by3 === "4/6/6/4|12/18", by3);
+
   const play = await evaluate(`(async () => {
     const pause = (ms) => new Promise((r) => setTimeout(r, ms));
     const block = document.querySelector('[data-exercise="sim-play"]');
