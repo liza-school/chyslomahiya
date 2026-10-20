@@ -31,7 +31,10 @@
       { id: "main-property", title: "Основна властивість дробу", start: 0 },
       { id: "reduce-practice", title: "Повторення й скорочення: задачі 1–2", start: 13 },
       { id: "parts-and-factorial", title: "Яку частину, дії та факторіал: задачі 3–7", start: 31 },
-      { id: "factorial-euclid", title: "Задача 8 і алгоритм Евкліда", start: 42 },
+      { id: "factorial-practice", title: "Задача 8: факторіал у дробах", start: 42 },
+      { id: "euclid-idea", title: "Алгоритм Евкліда: ідея", start: 45 },
+      { id: "euclid-self", title: "Ділимо самі: Евклід на практиці", start: 49 },
+      { id: "euclid-jugs-bonus", title: "Бонус: відра й НСД", start: 54 },
       { id: "euclid-practice", title: "Евклід на ділі: задачі 9–11", start: 63 },
     ],
     blocks: [
