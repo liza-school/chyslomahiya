@@ -339,5 +339,129 @@ const FRAC = (function () {
     return root;
   }
 
-  return { cut, euclid, gcd, division };
+  /* ---------- Евклід: ділить сама дитина ---------- */
+
+  /* Кожен рядок дитина заповнює сама: скільки разів менше влізло й яка остача. Сходинки кратних — підказка за бажанням. */
+  function euclidtrain(cfg, onDone) {
+    const pairs = cfg.pairs;
+    let at = 0, big, small, lines, finishedPair, showLadder, solved = false;
+    let draft = ["", ""];
+
+    const root = el("div", { class: "sim gauss euclid-sim" });
+    const task = el("div", { class: "sim-task", html: cfg.intro || "" });
+    const head = el("div", { class: "sim-stat" });
+    const table = el("div", { class: "euclid-table" });
+    const work = el("div", { class: "euclid-work" });
+    const verdict = el("div", { class: "sim-verdict" });
+
+    const say = (text, kind) => {
+      verdict.className = "sim-verdict" + (kind ? " " + kind : "");
+      verdict.textContent = text;
+    };
+
+    const load = (i) => {
+      at = i;
+      big = Math.max(...pairs[i]);
+      small = Math.min(...pairs[i]);
+      lines = [];
+      finishedPair = false;
+      showLadder = false;
+      draft = ["", ""];
+      say("", "");
+      draw();
+    };
+
+    /* Кратні меншого числа, доки не перелетимо за більше: так ділить людина, коли не знає відповідь одразу. */
+    const ladder = () => {
+      const steps = [];
+      for (let i = 1; i <= 12; i++) {
+        const p = small * i;
+        steps.push(el("span", {
+          class: "euclid-step" + (p > big ? " over" : ""),
+          text: small + " · " + i + " = " + p + (p > big ? " — забагато" : ""),
+        }));
+        if (p > big) break;
+      }
+      return el("div", { class: "euclid-ladder" }, steps);
+    };
+
+    const draw = () => {
+      head.textContent = "Задача " + (at + 1) + " з " + pairs.length + ": знайди НСД(" + big_of(at) + "; " + small_of(at) + ")";
+      table.replaceChildren();
+      lines.forEach((line, i) => {
+        table.append(el("div", {
+          class: "euclid-line",
+          style: "border-color:" + HUES[i % HUES.length],
+          html: "<b>" + line[0] + " = " + line[1] + " · " + line[2] + " + " + line[3] + "</b>" +
+            ' <span class="euclid-note">(' + line[0] + " − " + line[1] * line[2] + " = " + line[3] + ")</span>",
+        }));
+      });
+      work.replaceChildren();
+      if (finishedPair) {
+        const last = lines[lines.length - 1];
+        say("Остачі немає — стоп! Остання ненульова остача — " + last[1] + ". Тож НСД(" + big_of(at) + "; " + small_of(at) + ") = " + last[1] + ".", "ok");
+        if (at + 1 < pairs.length) {
+          const next = el("button", { class: "btn", type: "button", text: "Наступна задача →", "data-act": "next" });
+          next.addEventListener("click", () => load(at + 1));
+          work.append(next);
+        }
+        return;
+      }
+      const kIn = el("input", { class: "mini-input", type: "text", inputmode: "numeric", "aria-label": "Скільки разів", "data-field": "k", value: draft[0] });
+      const rIn = el("input", { class: "mini-input", type: "text", inputmode: "numeric", "aria-label": "Остача", "data-field": "r", value: draft[1] });
+      const check = el("button", { class: "btn", type: "button", text: "Перевірити ✓", "data-act": "check" });
+      const help = el("button", { class: "ghost-btn", type: "button", text: showLadder ? "Сховати кратні" : "Підказка: кратні числа " + small, "data-act": "ladder" });
+      const run = () => {
+        const k = Number(kIn.value), r = Number(rIn.value);
+        if (!kIn.value.trim() || !rIn.value.trim() || !Number.isInteger(k) || !Number.isInteger(r) || k < 0 || r < 0) {
+          return say("Впиши обидва числа: скільки разів і яка остача.", "no");
+        }
+        const p = small * k;
+        if (p > big) return say(small + " · " + k + " = " + p + " — це більше за " + big + ", не влізло. Візьми менше.", "no");
+        if (big - p >= small) return say(small + " · " + k + " = " + p + ", лишається " + (big - p) + " — це ще не менше за " + small + ", влізе ще раз. Візьми більше.", "no");
+        if (r !== big - p) return say("Скільки разів — вірно! Тепер остача: " + big + " − " + p + " = ?", "no");
+        lines.push([big, small, k, r]);
+        if (r === 0) {
+          finishedPair = true;
+          draw();
+          if (at + 1 === pairs.length && !solved) {
+            solved = true;
+            onDone();
+          }
+          return;
+        }
+        big = small;
+        small = r;
+        showLadder = false;
+        draft = ["", ""];
+        draw();
+        say("Вірно! Тепер ділимо менше число на остачу: " + big + " на " + small + ".", "ok");
+      };
+      check.addEventListener("click", run);
+      help.addEventListener("click", () => {
+        draft = [kIn.value, rIn.value];
+        showLadder = !showLadder;
+        draw();
+      });
+      [kIn, rIn].forEach((input) => input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") run();
+      }));
+      work.append(
+        el("div", { class: "euclid-line pending euclid-now" },
+          el("b", { text: big + " = " + small + " · " }), kIn, el("b", { text: " + " }), rIn),
+        el("div", { class: "frac-controls" }, check, help),
+        showLadder ? ladder() : null
+      );
+    };
+
+    /* Заголовок показує початкову пару, а не поточний рядок. */
+    const big_of = (i) => Math.max(...pairs[i]);
+    const small_of = (i) => Math.min(...pairs[i]);
+
+    root.append(task, head, table, work, verdict);
+    load(0);
+    return root;
+  }
+
+  return { cut, euclid, euclidtrain, gcd, division };
 })();
