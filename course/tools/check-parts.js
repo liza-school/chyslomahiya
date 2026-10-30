@@ -10,7 +10,7 @@ module.exports = async function checkParts({ evaluate, expect, go, call }) {
     await new Promise((resolve) => setTimeout(resolve, 600));
   };
 
-  for (const [id, count, blocks, tasks] of [["l01", 5, 38, 24], ["l02", 4, 23, 13], ["l03", 5, 43, 26], ["l04", 5, 53, 31], ["l05", 8, 75, 50]]) {
+  for (const [id, count, blocks, tasks] of [["l01", 5, 39, 24], ["l02", 4, 24, 13], ["l03", 5, 44, 26], ["l04", 5, 54, 31], ["l05", 8, 76, 50], ["l06", 4, 24, 13]]) {
     await go("#/l/" + id);
     const shape = await evaluate(`(() => {
       const parts = [...document.querySelectorAll('.lesson-part')];
