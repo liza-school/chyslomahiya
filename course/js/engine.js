@@ -100,6 +100,7 @@ const COURSE = (function () {
     jugs: "відра",
     jugtrainer: "тренажер",
     jugwalk: "граф",
+    matryoshka: "скриньки",
     pairs: "пари",
     stairs: "сходи",
     piles: "купки",
@@ -365,6 +366,15 @@ const COURSE = (function () {
     fraction: (b, ctx) => gaussBlock(b, ctx, FRAC.cut, "Закляття скорочення"),
     euclid: (b, ctx) => gaussBlock(b, ctx, FRAC.euclid, "Прямокутник і квадрати"),
     euclidtrain: (b, ctx) => gaussBlock(b, ctx, FRAC.euclidtrain, "Ділимо самі"),
+
+    /* Скриньки факторіала: картинка з кнопками, нічого не зараховує. */
+    matryoshka: (b) =>
+      el(
+        "section",
+        { class: "block" },
+        el("div", { class: "block-head" }, el("span", { class: "tag", text: TAGS.matryoshka }), el("span", { text: b.title || "Скриньки факторіала" })),
+        el("div", { class: "block-body" }, b.html ? el("div", { html: b.html }) : null, FRAC.matryoshka(b), b.after ? el("div", { html: b.after }) : null)
+      ),
 
     /* Граф станів простого прикладу: крок за кроком, обидві доріжки. Нічого не зараховує — це картинка. */
     jugwalk: (b) =>

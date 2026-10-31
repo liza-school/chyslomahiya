@@ -463,5 +463,75 @@ const FRAC = (function () {
     return root;
   }
 
-  return { cut, euclid, euclidtrain, gcd, division };
+  /* ---------- Скриньки факторіала: коробка в коробці, скорочення — зняти внутрішню ---------- */
+
+  function matryoshka(cfg) {
+    let big = cfg.big || 6;
+    let small = cfg.small || 3;
+    let cancelled = false;
+    const fact = (n) => (n < 2 ? 1 : n * fact(n - 1));
+
+    const root = el("div", { class: "sim gauss frac-sim mat-sim" });
+    const task = el("div", { class: "sim-task", html: cfg.intro || "" });
+    const controls = el("div", { class: "mat-controls" });
+    const picture = el("div", { class: "mat-picture" });
+    const fraction = el("div", { class: "mat-fraction", "aria-live": "polite" });
+    const result = el("div", { class: "sim-verdict" });
+    const cancel = el("button", { class: "btn", type: "button", text: "Скоротити коробку" });
+
+    const box = (level) => {
+      const kids = level === 1 ? [el("span", { text: "1" })] : [box(level - 1), el("span", { class: "mat-mul", text: "· " + level })];
+      return el("span", { class: "mat-box" + (level === small ? " inner" : "") + (level === small && cancelled ? " gone" : "") },
+        el("b", { class: "mat-label", text: level + "!" }), ...kids);
+    };
+
+    const chip = (text, extra) => el("span", { class: "mat-chip" + (extra ? " " + extra : ""), text });
+    const mults = () => {
+      const out = [];
+      for (let i = small + 1; i <= big; i++) out.push(i);
+      return out;
+    };
+
+    const stepper = (label, get, set, min, max) => {
+      const value = el("b", { text: get() + "!" });
+      const minus = el("button", { class: "btn", type: "button", text: "−", "aria-label": "менше" });
+      const plus = el("button", { class: "btn", type: "button", text: "+", "aria-label": "більше" });
+      minus.addEventListener("click", () => { if (get() > min()) { set(get() - 1); cancelled = false; redraw(); } });
+      plus.addEventListener("click", () => { if (get() < max()) { set(get() + 1); cancelled = false; redraw(); } });
+      const wrap = el("span", { class: "mat-stepper" }, el("span", { text: label + " " }), minus, value, plus);
+      wrap.update = () => { value.textContent = get() + "!"; };
+      return wrap;
+    };
+
+    const bigStep = stepper("Велика коробка", () => big, (v) => { big = v; }, () => small + 1, () => 8);
+    const smallStep = stepper("Менша коробка", () => small, (v) => { small = v; }, () => 1, () => big - 1);
+
+    cancel.addEventListener("click", () => { cancelled = !cancelled; redraw(); });
+
+    function redraw() {
+      bigStep.update();
+      smallStep.update();
+      picture.replaceChildren(el("div", { class: "mat-scroll" }, box(big)));
+      const m = mults();
+      const top = el("div", { class: "mat-line" },
+        chip(big + "!"), el("span", { text: " = " }),
+        chip(small + "!", "inner" + (cancelled ? " gone" : "")),
+        ...m.flatMap((n) => [el("span", { text: " · " }), chip(String(n), "mul")]));
+      const bottom = el("div", { class: "mat-line" }, chip(small + "!", "inner" + (cancelled ? " gone" : "")));
+      fraction.replaceChildren(top, el("div", { class: "mat-bar" }), bottom);
+      cancel.textContent = cancelled ? "Повернути коробку" : "Скоротити коробку";
+      const value = m.reduce((a, b) => a * b, 1);
+      result.textContent = cancelled
+        ? big + "! / " + small + "! = " + m.join(" · ") + " = " + value + ". Перевірка: " + fact(big) + " : " + fact(small) + " = " + value
+        : "Золота коробка " + small + "! стоїть і вгорі, і внизу. Натисни «Скоротити коробку».";
+      result.className = "sim-verdict" + (cancelled ? " ok" : "");
+    }
+
+    controls.append(bigStep, smallStep, cancel);
+    root.append(task, controls, picture, fraction, result);
+    redraw();
+    return root;
+  }
+
+  return { cut, euclid, euclidtrain, matryoshka, gcd, division };
 })();

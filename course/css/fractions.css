@@ -45,3 +45,28 @@
 .euclid-ladder { display: flex; flex-wrap: wrap; gap: 6px 10px; margin: 8px 0; }
 .euclid-step { padding: 4px 10px; border-radius: 6px; background: rgba(0,0,0,.22); border: 1px dashed var(--gold-dim); font-size: 15px; }
 .euclid-step.over { border-color: #e88; opacity: .8; }
+
+/* Матрьошка факторіала */
+.mat-controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 6px 0; }
+.mat-stepper { display: inline-flex; align-items: center; gap: 6px; }
+.mat-stepper b { min-width: 2.2em; text-align: center; color: var(--gold-hi); font: 700 18px var(--serif); }
+.mat-scroll { overflow-x: auto; padding: 6px 2px 10px; }
+.mat-box {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  margin-top: 12px; padding: 12px 8px 6px; position: relative;
+  border: 2px solid rgba(244,207,128,.55); border-radius: 10px;
+  background: rgba(244,207,128,.06); color: #fff;
+  transition: background .5s, border-color .5s, opacity .5s;
+}
+.mat-box .mat-label { position: absolute; top: -11px; left: 8px; padding: 0 5px; font-size: 13px; background: #2a2118; border-radius: 4px; color: var(--gold-hi); }
+.mat-box.inner { border-color: var(--gold); background: rgba(217,164,65,.28); }
+.mat-box.inner.gone { opacity: .25; border-style: dashed; }
+.mat-mul { font-weight: 700; }
+.mat-fraction { text-align: center; margin: 8px 0; }
+.mat-line { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px; font: 700 20px var(--serif); color: #fff; }
+.mat-bar { height: 3px; background: var(--gold-hi); border-radius: 2px; margin: 6px auto; max-width: 420px; }
+.mat-chip { padding: 2px 9px; border-radius: 8px; border: 2px solid rgba(255,255,255,.35); transition: opacity .5s, background .5s; }
+.mat-chip.inner { border-color: var(--gold); background: rgba(217,164,65,.3); }
+.mat-chip.inner.gone { opacity: .3; text-decoration: line-through; text-decoration-thickness: 3px; }
+.mat-chip.mul { border-color: #7fe39a; background: rgba(127,227,154,.18); }
+@media (prefers-reduced-motion: reduce) { .mat-box, .mat-chip { transition: none; } }
