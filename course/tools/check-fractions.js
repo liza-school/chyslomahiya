@@ -169,4 +169,44 @@ module.exports = async function checkFractions({ evaluate, expect, go }) {
   })()`);
   expect("масштаб: хибна відповідь не зараховується, шість вірних проходять тренажер",
     sc.wrongDone === "" && sc.log.length === 6 && sc.log.every(Boolean) && sc.done === "✓", JSON.stringify(sc) + " " + scaleWant);
+
+  /* Монети без підказки: план Дамблдора знаходить кожну монету, і в важчому, і в легшому випадку. */
+  const plans = await evaluate(`(() => {
+    const out = [];
+    for (const [n, k] of [[3, 2], [4, 2], [5, 3], [9, 3], [12, 3], [13, 3], [14, 4], [26, 4], [40, 4]]) {
+      let bad = 0;
+      for (let f = 0; f < n; f++) for (const d of [1, -1]) {
+        const r = COINWALK.plan(n, k, f, d);
+        if (r.fail || r.found !== f || r.steps.length > k) bad++;
+      }
+      out.push(n + '/' + k + ':' + bad);
+    }
+    let over = 0;
+    for (const [n, k] of [[5, 2], [14, 3], [41, 4]]) {
+      let bad = 0;
+      for (let f = 0; f < n; f++) for (const d of [1, -1]) {
+        const r = COINWALK.plan(n, k, f, d);
+        if (r.fail || r.found !== f) bad++;
+      }
+      if (bad) over++;
+    }
+    return { out, over };
+  })()`);
+  expect("Дамблдор: 4 за 2, 13 за 3, 40 за 4 знаходять кожну монету в обох напрямках; 5, 14 і 41 не виходять",
+    plans.out.every((x) => x.endsWith(":0")) && plans.over === 3, JSON.stringify(plans));
+
+  const walkUi = await evaluate(`(async () => {
+    const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+    const walks = [...document.querySelectorAll('.walk-sim')];
+    const res = [];
+    for (const w of walks) {
+      const btn = w.querySelector('[data-act="next"]');
+      let guard = 0;
+      while (!btn.disabled && guard++ < 20) { btn.click(); await pause(2); }
+      res.push(w.querySelector('.walk-end') ? w.querySelector('.walk-end').textContent : 'немає');
+    }
+    return res;
+  })()`);
+  expect("три анімації Дамблдора проходять до кінця й називають монету",
+    walkUi.length === 3 && walkUi[0].includes("№3") && walkUi[1].includes("№9") && walkUi[2].includes("№5"), JSON.stringify(walkUi));
 };

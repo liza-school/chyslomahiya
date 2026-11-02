@@ -108,6 +108,7 @@ const COURSE = (function () {
     euclid: "Евклід",
     euclidtrain: "Евклід",
     scaletrain: "масштаб",
+    scalewalk: "Дамблдор",
     homework: "домашнє",
   };
 
@@ -376,6 +377,15 @@ const COURSE = (function () {
         { class: "block" },
         el("div", { class: "block-head" }, el("span", { class: "tag", text: TAGS.matryoshka }), el("span", { text: b.title || "Скриньки факторіала" })),
         el("div", { class: "block-body" }, b.html ? el("div", { html: b.html }) : null, FRAC.matryoshka(b), b.after ? el("div", { html: b.after }) : null)
+      ),
+
+    /* Дамблдор шукає фальшиву монету: покрокова анімація, нічого не зараховує. */
+    scalewalk: (b) =>
+      el(
+        "section",
+        { class: "block scales-block" },
+        el("div", { class: "block-head" }, el("span", { class: "tag", text: TAGS.scalewalk }), el("span", { text: b.title || "Дамблдор і терези" })),
+        el("div", { class: "block-body" }, b.html ? el("div", { html: b.html }) : null, COINWALK.walk(b), b.after ? el("div", { html: b.after }) : null)
       ),
 
     /* Граф станів простого прикладу: крок за кроком, обидві доріжки. Нічого не зараховує — це картинка. */

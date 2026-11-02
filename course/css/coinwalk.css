@@ -1,0 +1,19 @@
+.walk-sim { display: grid; gap: 10px; }
+.walk-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 15px; }
+.walk-note { font-size: 13px; opacity: .75; }
+.walk-select { font: inherit; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--gold-dim); background: var(--parch); color: var(--ink); }
+.walk-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; color: var(--parch-2); }
+.walk-board, .walk-coins { display: flex; flex-wrap: wrap; gap: 4px; }
+.coin-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; padding: 0 4px; border-radius: 50%; font: 700 13px var(--sans); border: 2px solid transparent; box-sizing: border-box; }
+.coin-chip.u { background: #f4cf80; border-color: var(--gold); color: var(--ink); }
+.coin-chip.h { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+.coin-chip.l { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.coin-chip.g { background: #e6e1d6; border-color: #bdb6a6; color: #8d8574; }
+.coin-chip.is-fake { box-shadow: 0 0 0 3px rgba(75, 46, 131, .45); }
+.walk-pans { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.walk-pan, .walk-table { padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,.06); border: 1px dashed var(--gold-dim); display: grid; gap: 6px; }
+.walk-narr p { margin: 4px 0; }
+.walk-why { font-size: 14px; color: var(--parch-2); opacity: .9; }
+.walk-end { font-weight: 700; color: #7fe39a; }
+.walk-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 520px) { .walk-pans { grid-template-columns: 1fr; } }
