@@ -107,6 +107,7 @@ const COURSE = (function () {
     fraction: "дроби",
     euclid: "Евклід",
     euclidtrain: "Евклід",
+    scaletrain: "масштаб",
     homework: "домашнє",
   };
 
@@ -366,6 +367,7 @@ const COURSE = (function () {
     fraction: (b, ctx) => gaussBlock(b, ctx, FRAC.cut, "Закляття скорочення"),
     euclid: (b, ctx) => gaussBlock(b, ctx, FRAC.euclid, "Прямокутник і квадрати"),
     euclidtrain: (b, ctx) => gaussBlock(b, ctx, FRAC.euclidtrain, "Ділимо самі"),
+    scaletrain: (b, ctx) => gaussBlock(b, ctx, FRAC.scaletrain, "Мапа й мікроскоп"),
 
     /* Скриньки факторіала: картинка з кнопками, нічого не зараховує. */
     matryoshka: (b) =>
@@ -604,7 +606,7 @@ const COURSE = (function () {
 
   /* ---------- прогрес ---------- */
 
-  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain"]);
+  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain"]);
 
   function blockKey(lesson, block, index) {
     return lesson.id + ":" + (block.id || block.type + index);

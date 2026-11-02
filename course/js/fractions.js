@@ -463,6 +463,71 @@ const FRAC = (function () {
     return root;
   }
 
+  /* ---------- Масштаб: карта зменшує, мікроскоп збільшує; одна й та сама відповідь «у скільки разів» ---------- */
+
+  function scaletrain(cfg, onDone) {
+    const cases = cfg.cases;
+    let at = 0, solved = false, tries = 0;
+    const root = el("div", { class: "sim gauss scale-sim" });
+    const head = el("div", { class: "sim-stat" });
+    const scene = el("div", { class: "sim-task" });
+    const bar = el("div", { class: "scale-bar" });
+    const work = el("div", { class: "scale-work" });
+    const verdict = el("div", { class: "sim-verdict" });
+    const say = (text, kind) => {
+      verdict.className = "sim-verdict" + (kind ? " " + kind : "");
+      verdict.innerHTML = text;
+    };
+    const num = (text) => Number(String(text).replace(/\s+/g, "").replace(",", "."));
+
+    const load = (i) => {
+      at = i;
+      tries = 0;
+      const c = cases[i];
+      head.textContent = "Задача " + (i + 1) + " з " + cases.length + " · масштаб " + c.scale;
+      scene.innerHTML = c.text;
+      /* Смужка показує «що ми бачимо» (на мапі чи в мікроскопі); довжина пропорційна числу, але не більше за рамку. */
+      bar.replaceChildren(
+        el("div", { class: "scale-seen", style: "width:" + Math.max(12, Math.min(100, c.seenPct)) + "%" }, el("span", { text: c.seen })),
+        el("div", { class: "scale-kind", text: c.kind })
+      );
+      work.replaceChildren();
+      const input = el("input", { class: "mini-input wide", type: "text", inputmode: "decimal", "aria-label": "Відповідь", "data-field": "ans" });
+      const check = el("button", { class: "btn", type: "button", text: "Перевірити ✓", "data-act": "check" });
+      const run = () => {
+        if (!input.value.trim()) return say("Впиши число.", "no");
+        const v = num(input.value);
+        if (!Number.isFinite(v)) return say("Потрібне число, наприклад 12.", "no");
+        if (Math.abs(v - c.answer) < 1e-9) {
+          say("Вірно! " + c.solution, "ok");
+          input.disabled = true;
+          check.disabled = true;
+          if (i + 1 < cases.length) {
+            const next = el("button", { class: "btn", type: "button", text: "Наступна задача →", "data-act": "next" });
+            next.addEventListener("click", () => load(i + 1));
+            work.append(next);
+          } else if (!solved) {
+            solved = true;
+            onDone();
+          }
+          return;
+        }
+        tries += 1;
+        say(tries === 1 ? "Ще ні. " + c.hint : "Не те. Розв'язок кроками: " + c.solution, "no");
+      };
+      check.addEventListener("click", run);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") run();
+      });
+      work.prepend(el("div", { class: "euclid-now" }, el("b", { html: c.ask + " " }), input, el("b", { text: " " + c.unit }), check));
+      say("", "");
+    };
+
+    root.append(head, scene, bar, work, verdict);
+    load(0);
+    return root;
+  }
+
   /* ---------- Скриньки факторіала: коробка в коробці, скорочення — зняти внутрішню ---------- */
 
   function matryoshka(cfg) {
@@ -533,5 +598,5 @@ const FRAC = (function () {
     return root;
   }
 
-  return { cut, euclid, euclidtrain, matryoshka, gcd, division };
+  return { cut, euclid, euclidtrain, scaletrain, matryoshka, gcd, division };
 })();

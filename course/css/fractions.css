@@ -70,3 +70,8 @@
 .mat-chip.inner.gone { opacity: .3; text-decoration: line-through; text-decoration-thickness: 3px; }
 .mat-chip.mul { border-color: #7fe39a; background: rgba(127,227,154,.18); }
 @media (prefers-reduced-motion: reduce) { .mat-box, .mat-chip { transition: none; } }
+
+.scale-bar { margin: 8px 0; }
+.scale-seen { min-height: 26px; border-radius: 6px; background: linear-gradient(90deg, #f4cf80, #d9a441); border: 2px solid #1a1430; display: flex; align-items: center; justify-content: center; font: 700 15px var(--sans); color: #1a1430; }
+.scale-kind { font-size: 13px; opacity: .8; margin-top: 4px; }
+.scale-work { margin: 8px 0; }

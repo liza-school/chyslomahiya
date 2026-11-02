@@ -147,4 +147,26 @@ module.exports = async function checkFractions({ evaluate, expect, go }) {
   const g = await evaluate("FRAC.gcd(2147, 1577)");
   expect("приклад 6: шість рядків ділень збігаються з підручником (НСД 19)",
     book === "2147,1577,1,570 1577,570,2,437 570,437,1,133 437,133,3,38 133,38,3,19 38,19,2,0" && g === 19, book);
+
+  /* Заняття 6: масштаб. Відповіді рахуємо тут окремо, з «сирих» чисел умови. */
+  await go("#/l/l06");
+  const scaleWant = [5 * 10000 / 100, 4 * 100000 / 100000, 40 / 20, 150 / 50, 6 * 100000 / 3, 6 * 100 / 50];
+  const sc = await evaluate(`(async () => {
+    const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+    const block = document.querySelector('[data-exercise="sim-scale"]');
+    const log = [];
+    const input = () => block.querySelector('[data-field="ans"]');
+    input().value = '7'; block.querySelector('[data-act="check"]').click(); await pause(5);
+    const wrongDone = block.querySelector('.done-mark').textContent;
+    for (const v of ${JSON.stringify(scaleWant)}) {
+      input().value = String(v).replace('.', ','); block.querySelector('[data-act="check"]').click(); await pause(5);
+      const next = block.querySelector('[data-act="next"]');
+      log.push(block.querySelector('.sim-verdict').className.includes('ok'));
+      if (next) next.click();
+      await pause(5);
+    }
+    return { wrongDone, log, done: block.querySelector('.done-mark').textContent };
+  })()`);
+  expect("масштаб: хибна відповідь не зараховується, шість вірних проходять тренажер",
+    sc.wrongDone === "" && sc.log.length === 6 && sc.log.every(Boolean) && sc.done === "✓", JSON.stringify(sc) + " " + scaleWant);
 };
