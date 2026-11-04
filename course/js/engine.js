@@ -5,14 +5,14 @@ const COURSE = (function () {
   const OLD_STORE_KEY = "fimli.v1"; // курс звався інакше; прогрес переїжджає сам
   const lessons = [];
 
-  let store = { done: {}, parts: {}, today: {} };
+  let store = { done: {}, parts: {}, today: {}, last: {} };
   try {
     const saved = localStorage.getItem(STORE_KEY) || localStorage.getItem(OLD_STORE_KEY) || "{}";
     store = Object.assign(store, JSON.parse(saved));
   } catch (e) {
     /* зіпсоване сховище просто ігноруємо */
   }
-  for (const field of ["done", "parts", "today"]) {
+  for (const field of ["done", "parts", "today", "last"]) {
     if (!store[field] || typeof store[field] !== "object" || Array.isArray(store[field])) store[field] = {};
   }
 
@@ -742,7 +742,7 @@ const COURSE = (function () {
     const resetBtn = el("button", { class: "ghost-btn", text: "Скинути весь прогрес" });
     resetBtn.addEventListener("click", () => {
       if (!confirm("Стерти позначки про виконані завдання й пройдені частини?")) return;
-      store = { done: {}, parts: {}, today: {} };
+      store = { done: {}, parts: {}, today: {}, last: {} };
       save();
       render();
     });
@@ -750,7 +750,26 @@ const COURSE = (function () {
     app.append(hero, cards, el("footer", { class: "page-foot" }, resetBtn));
   }
 
+  /* «Де зупинились»: запамʼятовуємо перший блок, який видно зверху екрана, і даємо кнопку повернутись.
+     Працює й тоді, коли Ліза просто читала й нічого не відповідала. */
+  let tracking = null;
+  let trackTimer = 0;
+  window.addEventListener("scroll", () => {
+    if (!tracking) return;
+    clearTimeout(trackTimer);
+    trackTimer = setTimeout(() => {
+      if (!tracking) return;
+      const first = [...document.querySelectorAll(".lesson-part [data-bkey]")].find((node) => node.getBoundingClientRect().bottom > 90);
+      if (!first || window.scrollY < 300) return;
+      if (store.last[tracking.id] === first.dataset.bkey) return;
+      store.last[tracking.id] = first.dataset.bkey;
+      save();
+      refreshProgress();
+    }, 600);
+  }, { passive: true });
+
   function renderParts(app, lesson) {
+    tracking = lesson;
     const summary = el("div", { class: "parts-summary", "aria-live": "polite" });
     const todayLabel = el("p", { class: "parts-today" });
     const continueBtn = el("button", { class: "btn", type: "button", text: "До частини на сьогодні ↓" });
@@ -758,11 +777,20 @@ const COURSE = (function () {
     const views = [];
     const jump = (part) => document.getElementById("part-" + lesson.id + "-" + part.id).scrollIntoView({ block: "start", behavior: "smooth" });
     continueBtn.addEventListener("click", () => jump(todayPart(lesson)));
+    const resumeBtn = el("button", { class: "btn resume-btn", type: "button", "data-act": "resume" });
+    const findLast = () => {
+      const key = store.last[lesson.id];
+      return key ? [...document.querySelectorAll(".lesson-part [data-bkey]")].find((node) => node.dataset.bkey === key) : null;
+    };
+    resumeBtn.addEventListener("click", () => {
+      const node = findLast();
+      if (node) node.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
     app.append(el("div", { class: "parts-roadmap" },
       el("h2", { text: "Твій шлях у цьому занятті" }),
       summary, todayLabel,
       el("p", { class: "parts-help", text: "Пройшла матеріал — познач частину. Задачі можна доробити пізніше. Наступну частину пропонуємо на сьогодні; можна обрати іншу." }),
-      continueBtn, nav
+      resumeBtn, continueBtn, nav
     ));
 
     lesson.parts.forEach((part, position) => {
@@ -806,7 +834,12 @@ const COURSE = (function () {
       for (let index = part.start; index < end; index++) {
         const block = lesson.blocks[index];
         const make = BLOCKS[block.type];
-        if (make) section.append(make(block, { key: blockKey(lesson, block, index), lesson }));
+        if (make) {
+          const key = blockKey(lesson, block, index);
+          const node = make(block, { key, lesson });
+          node.dataset.bkey = key;
+          section.append(node);
+        }
       }
       section.append(el("footer", { class: "part-footer" }, complete));
       app.append(section);
@@ -819,6 +852,14 @@ const COURSE = (function () {
       summary.textContent = "Частин пройдено: " + stats.done + " з " + stats.total;
       todayLabel.textContent = today ? "На сьогодні: частина " + (lesson.parts.indexOf(today) + 1) + " — " + today.title : "Усі частини пройдено ✓";
       continueBtn.hidden = !today;
+      const where = findLast();
+      resumeBtn.hidden = !where;
+      if (where) {
+        const section = where.closest(".lesson-part");
+        const title = where.querySelector(".block-head span:nth-child(2)");
+        resumeBtn.textContent = "↪ Продовжити, де зупинилась: частина " + (lesson.parts.findIndex((p) => p.id === section.dataset.part) + 1) +
+          (title && title.textContent ? " · " + title.textContent.slice(0, 40) : "");
+      }
       views.forEach((view) => {
         const done = isPartDone(lesson, view.part);
         const current = today === view.part;
@@ -905,6 +946,7 @@ const COURSE = (function () {
     app.textContent = "";
     progressWatchers.length = 0;
     progressWatchers.push(updateMini);
+    tracking = null;
 
     const match = (location.hash || "#/").match(/^#\/l\/(.+)$/);
     const lesson = match ? lessons.find((item) => item.id === match[1]) : null;

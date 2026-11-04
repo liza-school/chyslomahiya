@@ -209,4 +209,22 @@ module.exports = async function checkFractions({ evaluate, expect, go }) {
   })()`);
   expect("три анімації Дамблдора проходять до кінця й називають монету",
     walkUi.length === 3 && walkUi[0].includes("№3") && walkUi[1].includes("№9") && walkUi[2].includes("№5"), JSON.stringify(walkUi));
+
+  /* «Де зупинились»: позиція читання запамʼятовується й кнопка повертає на місце. */
+  const resume = await evaluate(`(async () => {
+    const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+    const node = document.querySelector('[data-bkey="l06:p22"]');
+    window.scrollTo(0, node.getBoundingClientRect().top + window.scrollY - 5);
+    await pause(1000);
+    const saved = JSON.parse(localStorage.getItem('chyslomahiya.v1') || '{}');
+    const btn = document.querySelector('[data-act="resume"]');
+    const shown = btn && !btn.hidden ? btn.textContent : '';
+    window.scrollTo(0, 0);
+    await pause(100);
+    btn.click();
+    await pause(3000);
+    return { last: saved.last && saved.last.l06, shown, back: window.scrollY > 300 && Math.abs(node.getBoundingClientRect().top) < 300 };
+  })()`);
+  expect("кнопка «Продовжити, де зупинилась» запамʼятовує місце й повертає до нього",
+    resume.last === "l06:p22" && resume.shown.includes("частина 4") && resume.back, JSON.stringify(resume));
 };
