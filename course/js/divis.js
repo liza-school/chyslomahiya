@@ -303,5 +303,83 @@ const DIVIS = (function () {
     return root;
   }
 
-  return { check, star, cycle, lastDigit, cycleOf, digitSum };
+  /* ---------- 4. «Сортувалка»: познач, у яких колонках число ділиться ---------- */
+
+  function sort(cfg, onDone) {
+    const nums = cfg.nums;
+    const bins = cfg.bins;
+    let solved = false;
+    const root = el("div", { class: "sim divis div-sort" });
+    const task = el("div", { class: "sim-task", html: cfg.intro || "" });
+    const stat = el("div", { class: "sim-stat", text: "Познач кожну клітинку, де число ділиться націло. Тисни число ліворуч — підкаже, куди дивитись." });
+    const grid = el("div", { class: "div-grid" });
+    const help = el("div", { class: "div-sumline", html: "Натисни число ліворуч — побачиш його хвіст і суму цифр." });
+    const bar = el("div", { class: "div-row" });
+    const verdict = el("div", { class: "sim-verdict" });
+    const say = (text, kind) => { verdict.className = "sim-verdict" + (kind ? " " + kind : ""); verdict.innerHTML = text; };
+
+    const picked = new Set();      /* ключі "рядок:колонка" */
+    const cells = [];              /* cells[r][c] = кнопка */
+
+    const header = el("div", { class: "div-grid-row head" });
+    header.append(el("div", { class: "div-cell num head", text: "число" }));
+    bins.forEach((by) => header.append(el("div", { class: "div-cell bin head", text: "÷" + by })));
+    grid.append(header);
+
+    nums.forEach((n, r) => {
+      const row = el("div", { class: "div-grid-row" });
+      const numBtn = el("button", { class: "div-cell num", type: "button", text: String(n) });
+      numBtn.addEventListener("click", () => {
+        help.innerHTML = "<b>" + n + "</b> · остання цифра <b>" + (n % 10) + "</b> · сума цифр <b>" + digitSum(n) + "</b>";
+        [...grid.querySelectorAll(".div-grid-row")].forEach((x) => x.classList.remove("focus"));
+        row.classList.add("focus");
+      });
+      row.append(numBtn);
+      cells[r] = [];
+      bins.forEach((by, c) => {
+        const cell = el("button", { class: "div-cell bin", type: "button", "aria-label": n + " ділиться на " + by + "?" });
+        cell.addEventListener("click", () => {
+          const key = r + ":" + c;
+          if (picked.has(key)) { picked.delete(key); cell.classList.remove("on"); cell.textContent = ""; }
+          else { picked.add(key); cell.classList.add("on"); cell.textContent = "✓"; }
+          cell.classList.remove("good", "bad", "miss");
+          say("", "");
+        });
+        cells[r][c] = cell;
+        row.append(cell);
+      });
+      grid.append(row);
+    });
+
+    const check = el("button", { class: "btn", type: "button", text: "Перевірити ✓" });
+    check.addEventListener("click", () => {
+      let wrong = 0, missed = 0;
+      nums.forEach((n, r) => bins.forEach((by, c) => {
+        const cell = cells[r][c];
+        const should = n % by === 0;
+        const has = picked.has(r + ":" + c);
+        cell.classList.remove("good", "bad", "miss");
+        if (has && should) cell.classList.add("good");
+        else if (has && !should) { cell.classList.add("bad"); wrong++; }
+        else if (!has && should) { cell.classList.add("miss"); missed++; }
+      }));
+      if (wrong === 0 && missed === 0) {
+        say("Усе правильно! Кожне число стоїть лише в тих колонках, де справді ділиться.", "ok");
+        check.disabled = true;
+        cells.forEach((rowCells) => rowCells.forEach((cell) => { cell.disabled = true; }));
+        if (!solved) { solved = true; onDone(); }
+      } else {
+        const parts = [];
+        if (wrong) parts.push("<b>" + wrong + "</b> зайвих (червоні)");
+        if (missed) parts.push("<b>" + missed + "</b> пропущено (обведені)");
+        say("Ще ні: " + parts.join(", ") + ". Виправ і перевір знову.", "no");
+      }
+    });
+    bar.append(check);
+
+    root.append(task, stat, grid, help, bar, verdict);
+    return root;
+  }
+
+  return { check, star, cycle, sort, lastDigit, cycleOf, digitSum };
 })();

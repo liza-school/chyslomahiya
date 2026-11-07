@@ -73,7 +73,34 @@
 .divis .div-quiz { margin-top: 10px; }
 .divis .mini-input { width: 72px; }
 
+/* Сортувалка: таблиця «число × дільники», клітинки-прапорці. */
+.div-sort .div-grid { margin: 8px 0; max-width: 100%; }
+.div-grid-row { display: flex; gap: 6px; align-items: stretch; margin-bottom: 6px; }
+.div-grid-row.head .div-cell { background: transparent; border-color: transparent; color: var(--gold-hi); font-weight: 700; cursor: default; }
+.div-cell {
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px;
+  background: rgba(217,164,65,.06);
+  color: var(--cream);
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.div-cell.num { flex: 0 0 96px; font-family: var(--serif); font-size: 17px; cursor: pointer; }
+.div-cell.bin { flex: 0 0 56px; min-height: 40px; cursor: pointer; font-weight: 700; color: var(--gold-hi); }
+.div-cell.num:hover, .div-cell.bin:hover { background: rgba(217,164,65,.18); }
+.div-grid-row.focus .div-cell.num { background: var(--gold); color: #2b2118; border-color: var(--gold); }
+.div-cell.bin.on { background: var(--gold); color: #2b2118; border-color: var(--gold); }
+.div-cell.bin.good { box-shadow: 0 0 0 3px rgba(127,227,154,.6); }
+.div-cell.bin.bad { background: rgba(224,122,95,.35); border-color: #e07a5f; color: var(--cream); }
+.div-cell.bin.miss { box-shadow: 0 0 0 2px var(--gold-hi) inset; }
+.div-cell.bin:disabled, .div-cell.num:disabled { cursor: default; }
+
 @media (max-width: 420px) {
   .div-num { font-size: 24px; letter-spacing: 1px; }
   .div-chip { min-width: 30px; font-size: 16px; }
+  .div-grid-row { gap: 4px; }
+  .div-cell.num { flex-basis: 72px; font-size: 15px; }
+  .div-cell.bin { flex-basis: 42px; min-height: 38px; }
 }

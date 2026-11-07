@@ -112,6 +112,7 @@ const COURSE = (function () {
     divcheck: "подільність",
     starfill: "зірочка",
     digitcycle: "степінь",
+    divsort: "сортування",
     homework: "домашнє",
   };
 
@@ -375,6 +376,7 @@ const COURSE = (function () {
     divcheck: (b, ctx) => gaussBlock(b, ctx, DIVIS.check, "Хвіст чи сума"),
     starfill: (b, ctx) => gaussBlock(b, ctx, DIVIS.star, "Встав зірочку"),
     digitcycle: (b, ctx) => gaussBlock(b, ctx, DIVIS.cycle, "Хвіст степеня"),
+    divsort: (b, ctx) => gaussBlock(b, ctx, DIVIS.sort, "Сортуй у кошики"),
 
     /* Скриньки факторіала: картинка з кнопками, нічого не зараховує. */
     matryoshka: (b) =>
@@ -622,7 +624,7 @@ const COURSE = (function () {
 
   /* ---------- прогрес ---------- */
 
-  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain", "divcheck", "starfill", "digitcycle"]);
+  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain", "divcheck", "starfill", "digitcycle", "divsort"]);
 
   function blockKey(lesson, block, index) {
     return lesson.id + ":" + (block.id || block.type + index);
