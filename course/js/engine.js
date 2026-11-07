@@ -109,6 +109,9 @@ const COURSE = (function () {
     euclidtrain: "Евклід",
     scaletrain: "масштаб",
     scalewalk: "Дамблдор",
+    divcheck: "подільність",
+    starfill: "зірочка",
+    digitcycle: "степінь",
     homework: "домашнє",
   };
 
@@ -369,6 +372,9 @@ const COURSE = (function () {
     euclid: (b, ctx) => gaussBlock(b, ctx, FRAC.euclid, "Прямокутник і квадрати"),
     euclidtrain: (b, ctx) => gaussBlock(b, ctx, FRAC.euclidtrain, "Ділимо самі"),
     scaletrain: (b, ctx) => gaussBlock(b, ctx, FRAC.scaletrain, "Мапа й мікроскоп"),
+    divcheck: (b, ctx) => gaussBlock(b, ctx, DIVIS.check, "Хвіст чи сума"),
+    starfill: (b, ctx) => gaussBlock(b, ctx, DIVIS.star, "Встав зірочку"),
+    digitcycle: (b, ctx) => gaussBlock(b, ctx, DIVIS.cycle, "Хвіст степеня"),
 
     /* Скриньки факторіала: картинка з кнопками, нічого не зараховує. */
     matryoshka: (b) =>
@@ -616,7 +622,7 @@ const COURSE = (function () {
 
   /* ---------- прогрес ---------- */
 
-  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain"]);
+  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain", "divcheck", "starfill", "digitcycle"]);
 
   function blockKey(lesson, block, index) {
     return lesson.id + ":" + (block.id || block.type + index);

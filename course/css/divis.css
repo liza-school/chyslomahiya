@@ -1,0 +1,79 @@
+/* Подільність: оформлення трьох симуляторів заняття 7. Темна панель .sim уже є в scales.css;
+   тут лише свої дрібниці — підсвічений хвіст, цифрові чипи, стрічка циклу. */
+
+.divis .div-scene { font-size: 16px; margin: 6px 0; }
+.divis .div-ask { font-size: 17px; margin: 4px 0; }
+.divis .div-look { margin: 8px 0; }
+
+/* Велике число; золотом — та частина, на яку дивиться ознака. */
+.div-num {
+  font-family: var(--serif);
+  font-size: 30px;
+  letter-spacing: 2px;
+  display: inline-flex;
+  align-items: baseline;
+  margin: 4px 0;
+}
+.div-num .div-focus {
+  color: #2b2118;
+  background: var(--gold-hi);
+  border-radius: 6px;
+  padding: 0 4px;
+  font-weight: 700;
+}
+.div-num .div-dig {
+  padding: 0 3px;
+  border-bottom: 2px solid rgba(217,164,65,.4);
+  margin: 0 1px;
+}
+.div-sumline { font-size: 15px; color: var(--gold-hi); margin: 6px 0; }
+
+/* Рядок кнопок / чипів у симуляторі. */
+.divis .div-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.divis .div-row.digits { gap: 6px; }
+
+/* Цифрові чипи 0–9 для «встав зірочку». */
+.div-chip {
+  min-width: 38px;
+  padding: 8px 0;
+  font-size: 18px;
+  font-family: var(--serif);
+  text-align: center;
+  border-radius: 9px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(217,164,65,.08);
+  color: var(--gold-hi);
+  cursor: pointer;
+  flex: 1 1 38px;
+}
+.div-chip:hover { background: rgba(217,164,65,.2); }
+.div-chip.on { background: var(--gold); color: #2b2118; border-color: var(--gold); font-weight: 700; }
+.div-chip.good { box-shadow: 0 0 0 3px rgba(127,227,154,.6); }
+
+/* Велика зірочка-слот у шаблоні числа. */
+.div-star .div-focus { background: var(--gold-hi); color: #2b2118; border-radius: 6px; padding: 0 5px; font-weight: 700; }
+
+/* Стрічка циклу останньої цифри. */
+.divis .div-row.cyc { gap: 10px; }
+.cyc-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(217,164,65,.08);
+  min-width: 46px;
+}
+.cyc-chip b { font-size: 16px; color: var(--cream); font-weight: 600; }
+.cyc-chip .cyc-end { font-size: 15px; color: var(--gold-hi); font-weight: 700; }
+.cyc-chip.repeat { border-color: var(--gold-hi); background: rgba(217,164,65,.22); }
+
+.divis .div-quiz { margin-top: 10px; }
+.divis .mini-input { width: 72px; }
+
+@media (max-width: 420px) {
+  .div-num { font-size: 24px; letter-spacing: 1px; }
+  .div-chip { min-width: 30px; font-size: 16px; }
+}
