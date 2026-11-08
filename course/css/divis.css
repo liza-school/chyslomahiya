@@ -74,7 +74,7 @@
 .divis .mini-input { width: 72px; }
 
 /* Сортувалка: таблиця «число × дільники», клітинки-прапорці. */
-.div-sort .div-grid { margin: 8px 0; max-width: 100%; }
+.div-sort .div-grid { margin: 8px 0; max-width: 100%; overflow-x: auto; }
 .div-grid-row { display: flex; gap: 6px; align-items: stretch; margin-bottom: 6px; }
 .div-grid-row.head .div-cell { background: transparent; border-color: transparent; color: var(--gold-hi); font-weight: 700; cursor: default; }
 .div-cell {
@@ -101,6 +101,6 @@
   .div-num { font-size: 24px; letter-spacing: 1px; }
   .div-chip { min-width: 30px; font-size: 16px; }
   .div-grid-row { gap: 4px; }
-  .div-cell.num { flex-basis: 72px; font-size: 15px; }
-  .div-cell.bin { flex-basis: 42px; min-height: 38px; }
+  .div-cell.num { flex-basis: 64px; font-size: 15px; }
+  .div-cell.bin { flex-basis: 40px; min-height: 38px; }
 }
