@@ -217,11 +217,20 @@ const DIVIS = (function () {
     return seq;
   }
 
+  /* Типові показники для режиму пікера — ті самі, що в задачі 21, щоб тренажер і задача збігались. */
+  const PICKER_EXPS = { 2: 40, 3: 61, 4: 81, 5: 2025, 6: 2026, 7: 2024, 8: 2024, 9: 1000 };
+
   function cycle(cfg, onDone) {
-    const cases = cfg.cases;
-    let at = 0, solved = false;
+    const picker = Boolean(cfg.picker);
+    const bases = picker ? (cfg.bases || [2, 3, 4, 5, 6, 7, 8, 9]) : null;
+    const cases = picker
+      ? bases.map((b) => ({ base: b, exp: (cfg.exps && cfg.exps[b]) || PICKER_EXPS[b] || 100 }))
+      : cfg.cases;
+    let at = -1, solved = false;
+    const done = new Set();
     const root = el("div", { class: "sim divis div-cycle" });
     const task = el("div", { class: "sim-task", html: cfg.intro || "" });
+    const picks = el("div", { class: "div-row picks" });
     const stat = el("div", { class: "sim-stat" });
     const scene = el("div", { class: "div-scene" });
     const strip = el("div", { class: "div-row cyc" });
@@ -230,16 +239,34 @@ const DIVIS = (function () {
     const verdict = el("div", { class: "sim-verdict" });
     const say = (text, kind) => { verdict.className = "sim-verdict" + (kind ? " " + kind : ""); verdict.innerHTML = text; };
 
+    const pickBtns = [];
+    const paintPicks = () => {
+      pickBtns.forEach((btn, i) => {
+        btn.classList.toggle("active", i === at);
+        btn.classList.toggle("solved", done.has(i));
+        btn.textContent = String(cases[i].base) + (done.has(i) ? " ✓" : "");
+      });
+    };
+    if (picker) {
+      cases.forEach((c, i) => {
+        const btn = el("button", { class: "pick", type: "button", text: String(c.base) });
+        btn.addEventListener("click", () => { say("", ""); load(i); });
+        pickBtns.push(btn);
+        picks.append(btn);
+      });
+    }
+
     function load(i) {
       at = i;
       const c = cases[i];
       const base = c.base;
       const cyc = cycleOf(base);
       let shownPow = 0; /* скільки степенів уже відкрито */
-      stat.textContent = "Приклад " + (i + 1) + " з " + cases.length + " · основа " + base;
+      stat.textContent = picker ? "Основа " + base : "Приклад " + (i + 1) + " з " + cases.length + " · основа " + base;
       scene.innerHTML = "Множимо по одному: дивись, як <b>остання цифра</b> " + base + "ⁿ починає повторюватись.";
       strip.replaceChildren();
       quiz.replaceChildren();
+      if (picker) paintPicks();
 
       const next = el("button", { class: "btn", type: "button" });
       const paintBtn = () => {
@@ -250,7 +277,6 @@ const DIVIS = (function () {
         if (shownPow >= 8) return;
         shownPow++;
         const d = lastDigit(base, shownPow);
-        const inCycle = ((shownPow - 1) % cyc.length);
         const chip = el("span", { class: "cyc-chip" + (shownPow > cyc.length ? " repeat" : "") },
           el("b", { text: base + (["¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸"][shownPow - 1]) }),
           el("span", { class: "cyc-end", text: "…" + d })
@@ -278,7 +304,14 @@ const DIVIS = (function () {
               "Показник " + c.exp + " : " + cyc.length + " = остача " + (c.exp % cyc.length || cyc.length) +
               " → " + (c.exp % cyc.length === 0 ? "останнє число циклу" : (c.exp % cyc.length) + "-те число циклу") + ".", "ok");
             field.disabled = go.disabled = true;
-            if (i + 1 < cases.length) {
+            if (picker) {
+              done.add(i);
+              paintPicks();
+              if (!solved) { solved = true; onDone(); }
+              quiz.append(el("div", { class: "div-ask", html: done.size >= cases.length
+                ? "Усі основи 2–9 пройдено! Можеш переграти будь-яку вгорі."
+                : "Готово. Обери вгорі <b>іншу основу</b> — або ту саму ще раз." }));
+            } else if (i + 1 < cases.length) {
               const nx = el("button", { class: "btn", type: "button", text: "Інша основа →" });
               nx.addEventListener("click", () => { say("", ""); load(i + 1); });
               quiz.append(nx);
@@ -298,8 +331,15 @@ const DIVIS = (function () {
       say("", "");
     }
 
-    root.append(task, stat, scene, strip, step, quiz, verdict);
-    load(0);
+    if (picker) {
+      root.append(task, picks, stat, scene, strip, step, quiz, verdict);
+      stat.textContent = "Обери основу 2–9 — і побудуй її цикл.";
+      scene.innerHTML = "Тисни цифру вгорі: 2, 3, 4, 5, 6, 7, 8 чи 9.";
+      paintPicks();
+    } else {
+      root.append(task, stat, scene, strip, step, quiz, verdict);
+      load(0);
+    }
     return root;
   }
 

@@ -70,6 +70,24 @@
 .cyc-chip .cyc-end { font-size: 15px; color: var(--gold-hi); font-weight: 700; }
 .cyc-chip.repeat { border-color: var(--gold-hi); background: rgba(217,164,65,.22); }
 
+/* Пікер основи: кнопки 2–9, обирай будь-яку. */
+.div-cycle .div-row.picks { gap: 8px; margin-bottom: 2px; }
+.div-cycle .pick {
+  min-width: 54px;
+  padding: 10px 12px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 10px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(217,164,65,.08);
+  color: var(--cream);
+  cursor: pointer;
+}
+.div-cycle .pick:hover { border-color: var(--gold-hi); }
+.div-cycle .pick.active { background: var(--gold-hi); color: #2a1e05; border-color: var(--gold-hi); }
+.div-cycle .pick.solved { border-color: var(--gold-hi); }
+
 .divis .div-quiz { margin-top: 10px; }
 .divis .mini-input { width: 72px; }
 
