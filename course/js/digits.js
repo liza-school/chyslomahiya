@@ -89,6 +89,18 @@ const DIGITS = (function () {
     return stack.slice(0, keep).join("");
   }
 
+  /* Найменше число, що лишається, якщо викреслити rem цифр (порядок зберігаємо). */
+  function minAfterRemove(s, rem) {
+    const keep = s.length - rem;
+    const stack = [];
+    let drop = rem;
+    for (const ch of s) {
+      while (stack.length && drop > 0 && stack[stack.length - 1] > ch) { stack.pop(); drop--; }
+      stack.push(ch);
+    }
+    return stack.slice(0, keep).join("");
+  }
+
   /* ---------- дрібні будівельні блоки ---------- */
 
   const mkVerdict = () => {
@@ -440,6 +452,12 @@ const DIGITS = (function () {
 
   function crossout(cfg, onDone) {
     const cases = cfg.cases;
+    const mode = cfg.mode === "min" ? "min" : "max";
+    const pick = mode === "min" ? minAfterRemove : maxAfterRemove;
+    const goalWord = mode === "min" ? "найменшим" : "найбільшим";
+    const goalNoun = mode === "min" ? "Найменше" : "Найбільше";
+    const cmpWord = mode === "min" ? "менша" : "більша";
+    const moreWord = mode === "min" ? "менше" : "більше";
     let at = 0, solved = false;
     const root = el("div", { class: "sim digits dig-cross" });
     const task = el("div", { class: "sim-task", html: cfg.intro || "" });
@@ -451,7 +469,7 @@ const DIGITS = (function () {
     const verdict = mkVerdict();
 
     cases.forEach((c) => {
-      if (maxAfterRemove(c.s, c.remove).length !== c.s.length - c.remove)
+      if (pick(c.s, c.remove).length !== c.s.length - c.remove)
         console.error("crossout: довжина відповіді не збіглась для " + c.s);
     });
 
@@ -459,10 +477,10 @@ const DIGITS = (function () {
       at = i;
       const c = cases[i];
       const removed = new Set();
-      const best = maxAfterRemove(c.s, c.remove);
+      const best = pick(c.s, c.remove);
       stat.textContent = "Приклад " + (i + 1) + " з " + cases.length;
       scene.innerHTML = "Викресли рівно <b>" + c.remove + "</b> " + plural(c.remove, "цифру", "цифри", "цифр") +
-        ", щоб число, яке лишиться (" + (c.s.length - c.remove) + " цифр), було <b>найбільшим</b>.";
+        ", щоб число, яке лишиться (" + (c.s.length - c.remove) + " цифр), було <b>" + goalWord + "</b>.";
       strip.replaceChildren();
       const chips = [...c.s].map((ch, j) => {
         const chip = el("button", { class: "dig-cell-x", type: "button", text: ch });
@@ -492,7 +510,7 @@ const DIGITS = (function () {
         if (removed.size !== c.remove) { verdict.say("Треба викреслити рівно " + c.remove + " (зараз " + removed.size + ").", "no"); return; }
         const cur = current();
         if (cur === best) {
-          verdict.say("Найбільше можливе: <b>" + best + "</b>! Правило: йдучи зліва, прибирай цифру, якщо наступна більша за неї.", "ok");
+          verdict.say(goalNoun + " можливе: <b>" + best + "</b>! Правило: йдучи зліва, прибирай цифру, якщо наступна " + cmpWord + " за неї.", "ok");
           chips.forEach((ch) => (ch.disabled = true)); btn.disabled = true;
           if (i + 1 < cases.length) {
             const nx = el("button", { class: "btn", type: "button", text: "Наступне →" });
@@ -500,7 +518,7 @@ const DIGITS = (function () {
             bar.replaceChildren(nx);
           } else if (!solved) { solved = true; onDone(); }
         } else {
-          verdict.say("Можна більше, ніж " + cur + ". Підказка: шукай зліва цифру, за якою стоїть <b>більша</b> — саме її вигідно викреслити (велика цифра зсунеться вперед).", "no");
+          verdict.say("Можна " + moreWord + ", ніж " + cur + ". Підказка: шукай зліва цифру, за якою стоїть <b>" + cmpWord + "</b> — саме її вигідно викреслити.", "no");
         }
       }
     }
@@ -613,5 +631,5 @@ const DIGITS = (function () {
   }
 
   return { floors, pages, arrange, crossout, digitpos,
-    digitsUpto, pagesFromDigits, digitAt, maxAfterRemove, floorCount };
+    digitsUpto, pagesFromDigits, digitAt, maxAfterRemove, minAfterRemove, floorCount };
 })();
