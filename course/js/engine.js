@@ -113,6 +113,11 @@ const COURSE = (function () {
     starfill: "зірочка",
     digitcycle: "степінь",
     divsort: "сортування",
+    floors: "поверхи",
+    pages: "нумерація",
+    arrange: "множення",
+    crossout: "викреслюй",
+    digitpos: "N-те місце",
     homework: "домашнє",
   };
 
@@ -377,6 +382,11 @@ const COURSE = (function () {
     starfill: (b, ctx) => gaussBlock(b, ctx, DIVIS.star, "Встав зірочку"),
     digitcycle: (b, ctx) => gaussBlock(b, ctx, DIVIS.cycle, "Хвіст степеня"),
     divsort: (b, ctx) => gaussBlock(b, ctx, DIVIS.sort, "Сортуй у кошики"),
+    floors: (b, ctx) => gaussBlock(b, ctx, DIGITS.floors, "Поверхи чисел"),
+    pages: (b, ctx) => gaussBlock(b, ctx, DIGITS.pages, "Нумерація: туди й назад"),
+    arrange: (b, ctx) => gaussBlock(b, ctx, DIGITS.arrange, "Скільки чисел можна скласти"),
+    crossout: (b, ctx) => gaussBlock(b, ctx, DIGITS.crossout, "Викресли зайве"),
+    digitpos: (b, ctx) => gaussBlock(b, ctx, DIGITS.digitpos, "Цифра на N-му місці"),
 
     /* Скриньки факторіала: картинка з кнопками, нічого не зараховує. */
     matryoshka: (b) =>
@@ -624,7 +634,7 @@ const COURSE = (function () {
 
   /* ---------- прогрес ---------- */
 
-  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain", "divcheck", "starfill", "digitcycle", "divsort"]);
+  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain", "divcheck", "starfill", "digitcycle", "divsort", "floors", "pages", "arrange", "crossout", "digitpos"]);
 
   function blockKey(lesson, block, index) {
     return lesson.id + ":" + (block.id || block.type + index);

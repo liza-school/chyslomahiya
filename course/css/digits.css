@@ -1,0 +1,103 @@
+/* Натуральні числа й цифри: оформлення п'яти тренажерів заняття 8.
+   Темна панель .sim уже є в scales.css, кнопки .btn і .mini-input — в app.css/gauss.css.
+   Тут лише своє: вежа поверхів, таблиці кроків, слоти множення, стрічка викреслення. */
+
+.digits .dig-ask { font-size: 16px; margin: 6px 0; }
+
+/* Таблиця поверхів: щоб 4 колонки влізли й на вузький телефон. */
+.dig-table { table-layout: fixed; font-size: 14px; }
+.dig-table th, .dig-table td { padding: 6px 5px; overflow-wrap: anywhere; }
+.dig-table th:first-child, .dig-table td:first-child { width: 20%; }
+
+.digits .dig-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.digits .mini-input.good { border-color: #7fe39a; box-shadow: 0 0 0 2px rgba(127,227,154,.4); }
+.digits .mini-input.bad { border-color: #e07a5f; box-shadow: 0 0 0 2px rgba(224,122,95,.45); }
+.digits .muted { color: var(--gold-hi); }
+
+/* ---------- 1. Вежа поверхів ---------- */
+.dig-tower-wrap { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; margin: 8px 0; }
+.dig-tower { display: flex; flex-direction: column; gap: 5px; flex: 0 0 auto; }
+.dig-floor {
+  display: flex; justify-content: space-between; gap: 12px; align-items: center;
+  min-width: 150px; padding: 9px 12px; cursor: pointer;
+  border: 1px solid var(--gold-dim); border-radius: 9px;
+  background: rgba(217,164,65,.08); color: var(--cream); font: inherit;
+}
+.dig-floor:hover { border-color: var(--gold-hi); }
+.dig-floor.on { background: var(--gold-hi); color: #2a1e05; border-color: var(--gold-hi); }
+.dig-floor-k { font-weight: 700; }
+.dig-floor-d { letter-spacing: 1px; font-size: 11px; opacity: .8; }
+.dig-panel {
+  flex: 1 1 200px; min-width: 180px; padding: 10px 12px; line-height: 1.6;
+  border: 1px solid var(--gold-dim); border-radius: 10px; background: rgba(0,0,0,.2); font-size: 15px;
+}
+.dig-panel b { color: var(--gold-hi); }
+
+.dig-fill { margin: 10px 0; display: flex; flex-direction: column; gap: 5px; }
+.dig-fill-row { display: flex; gap: 10px; align-items: center; }
+.dig-fill-row > span:first-child { flex: 0 0 104px; }
+.dig-fill-row.head { color: var(--gold-hi); font-weight: 700; font-size: 14px; }
+.dig-fill-row.total { border-top: 1px solid var(--gold-dim); padding-top: 7px; margin-top: 3px; }
+.dig-dig-col { color: var(--gold-hi); font-size: 14px; }
+.dig-total { font-family: var(--serif); font-size: 20px; color: var(--gold-hi); font-weight: 700; }
+
+/* ---------- 2. Нумерація: вкладки й кроки ---------- */
+.dig-tabs { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+.dig-tab {
+  flex: 1 1 auto; padding: 9px 12px; cursor: pointer; font: inherit; font-weight: 600;
+  border: 1px solid var(--gold-dim); border-radius: 9px;
+  background: rgba(217,164,65,.06); color: var(--cream);
+}
+.dig-tab.on { background: var(--gold); color: #2b2118; border-color: var(--gold); }
+.dig-chip {
+  padding: 7px 11px; cursor: pointer; font: inherit;
+  border: 1px solid var(--gold-dim); border-radius: 8px;
+  background: rgba(217,164,65,.08); color: var(--gold-hi);
+}
+.dig-chip:hover { background: rgba(217,164,65,.2); }
+.dig-row.chips { gap: 6px; }
+
+.dig-steps { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.dig-step {
+  display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center;
+  padding: 8px 11px; border-radius: 9px; border: 1px solid rgba(217,164,65,.25);
+  background: rgba(217,164,65,.05); font-size: 15px;
+}
+.dig-step.live { border-color: var(--gold-hi); background: rgba(217,164,65,.14); }
+.dig-step.total { border-color: var(--gold-dim); background: rgba(0,0,0,.2); font-weight: 600; }
+.dig-step b { color: var(--gold-hi); }
+.dig-reveal { margin: 8px 0; line-height: 1.6; font-size: 15px; }
+.dig-reveal b { color: var(--gold-hi); }
+
+/* ---------- 3. Слоти множення ---------- */
+.dig-slots { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.dig-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 10px; border: 1px solid var(--gold-dim); border-radius: 10px; background: rgba(217,164,65,.06);
+}
+.dig-slot-k { font-size: 12px; color: var(--gold-hi); }
+.dig-row.mult { font-size: 16px; }
+
+/* ---------- 4. Стрічка викреслення ---------- */
+.dig-strip { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+.dig-cell-x {
+  min-width: 34px; padding: 8px 0; flex: 0 0 auto;
+  font-family: var(--serif); font-size: 19px; text-align: center; cursor: pointer;
+  border: 1px solid var(--gold-dim); border-radius: 8px;
+  background: rgba(217,164,65,.08); color: var(--cream);
+}
+.dig-cell-x:hover { border-color: var(--gold-hi); }
+.dig-cell-x.out { background: rgba(224,122,95,.22); color: #e07a5f; text-decoration: line-through; opacity: .65; }
+.dig-result { font-size: 15px; margin: 4px 0; overflow-wrap: anywhere; word-break: break-word; }
+.dig-result .dig-big { font-family: var(--serif); font-size: 22px; color: var(--gold-hi); letter-spacing: 1px; overflow-wrap: anywhere; word-break: break-all; }
+
+/* ---------- 5. Цифра на N-му місці ---------- */
+.dig-pos .dig-ask { margin: 8px 0; }
+
+@media (max-width: 420px) {
+  .dig-floor { min-width: 128px; }
+  .dig-panel { flex-basis: 100%; }
+  .dig-fill-row > span:first-child { flex-basis: 84px; font-size: 14px; }
+  .dig-cell-x { min-width: 28px; font-size: 16px; }
+  .dig-total { font-size: 18px; }
+}

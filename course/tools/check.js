@@ -85,7 +85,7 @@ function connect(url) {
   return { send, open, events };
 }
 
-const LESSONS = ["l01", "l02", "l03", "l04", "l05", "l06", "l07"];
+const LESSONS = ["l01", "l02", "l03", "l04", "l05", "l06", "l07", "l08"];
 
 (async () => {
   const cdp = connect(await browserWs());
