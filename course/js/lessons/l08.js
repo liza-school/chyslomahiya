@@ -454,34 +454,34 @@
         <p style="background:rgba(230,180,60,.12);border-left:3px solid #e6b43c;padding:9px 12px;border-radius:6px;margin:12px 0"><b>Пильнуй головне.</b> Ми шукаємо місце <b>окремої цифри</b>, а не числа. Поки числа одноцифрові (1–9), місце й число збігаються. Але щойно доходимо до 10, кожне число займає вже <b>кілька</b> клітинок-місць.</p>
 
         <p>Пронумеруймо кожну цифру окремо й подивимось, скільки клітинок бере кожне число. Жовтим зліплено двоцифрові (по 2 клітинки), синім — трицифрове 100 (аж 3 клітинки):</p>
-        <div style="overflow-x:auto;margin:10px 0">
-        <table style="border-collapse:collapse;text-align:center;font-size:14px;min-width:100%">
+        <div style="overflow-x:auto;margin:10px 0;text-align:center">
+        <table style="border-collapse:separate;border-spacing:5px 2px;text-align:center;font-size:14px;margin:0 auto">
           <tr>
-            <th style="text-align:left;padding:5px 8px;white-space:nowrap">місце</th>
-            <td style="padding:5px 7px">9</td>
-            <td style="padding:5px 7px"><b>10</b></td><td style="padding:5px 7px"><b>11</b></td>
-            <td style="padding:5px 7px">12</td><td style="padding:5px 7px">13</td>
-            <td style="padding:5px 7px">14</td><td style="padding:5px 7px">15</td>
-            <td style="padding:5px 7px">…</td>
-            <td style="padding:5px 7px"><b>190</b></td><td style="padding:5px 7px">191</td><td style="padding:5px 7px">192</td>
+            <th style="text-align:left;padding:4px 8px;white-space:nowrap">місце</th>
+            <td style="padding:4px 7px;text-align:center">9</td>
+            <td style="padding:4px 7px;text-align:center"><b>10</b></td><td style="padding:4px 7px;text-align:center"><b>11</b></td>
+            <td style="padding:4px 7px;text-align:center">12</td><td style="padding:4px 7px;text-align:center">13</td>
+            <td style="padding:4px 7px;text-align:center">14</td><td style="padding:4px 7px;text-align:center">15</td>
+            <td style="padding:4px 7px;text-align:center">…</td>
+            <td style="padding:4px 7px;text-align:center"><b>190</b></td><td style="padding:4px 7px;text-align:center">191</td><td style="padding:4px 7px;text-align:center">192</td>
           </tr>
           <tr>
-            <th style="text-align:left;padding:5px 8px;white-space:nowrap">цифра</th>
-            <td style="padding:5px 7px">9</td>
-            <td style="padding:5px 7px"><b>1</b></td><td style="padding:5px 7px"><b>0</b></td>
-            <td style="padding:5px 7px">1</td><td style="padding:5px 7px">1</td>
-            <td style="padding:5px 7px">1</td><td style="padding:5px 7px">2</td>
-            <td style="padding:5px 7px">…</td>
-            <td style="padding:5px 7px"><b>1</b></td><td style="padding:5px 7px">0</td><td style="padding:5px 7px">0</td>
+            <th style="text-align:left;padding:4px 8px;white-space:nowrap">цифра</th>
+            <td style="padding:4px 7px;text-align:center">9</td>
+            <td style="padding:4px 7px;text-align:center"><b>1</b></td><td style="padding:4px 7px;text-align:center"><b>0</b></td>
+            <td style="padding:4px 7px;text-align:center">1</td><td style="padding:4px 7px;text-align:center">1</td>
+            <td style="padding:4px 7px;text-align:center">1</td><td style="padding:4px 7px;text-align:center">2</td>
+            <td style="padding:4px 7px;text-align:center">…</td>
+            <td style="padding:4px 7px;text-align:center"><b>1</b></td><td style="padding:4px 7px;text-align:center">0</td><td style="padding:4px 7px;text-align:center">0</td>
           </tr>
           <tr>
-            <th style="text-align:left;padding:7px 8px 5px;white-space:nowrap">число</th>
-            <td style="padding:7px 7px 5px">9</td>
-            <td colspan="2" style="padding:7px 7px 5px;border-top:2px solid #e6b43c;background:rgba(230,180,60,.14);border-radius:0 0 8px 8px"><b>10</b></td>
-            <td colspan="2" style="padding:7px 7px 5px;border-top:2px solid #e6b43c;background:rgba(230,180,60,.14);border-radius:0 0 8px 8px"><b>11</b></td>
-            <td colspan="2" style="padding:7px 7px 5px;border-top:2px solid #e6b43c;background:rgba(230,180,60,.14);border-radius:0 0 8px 8px"><b>12</b></td>
-            <td style="padding:7px 7px 5px">…</td>
-            <td colspan="3" style="padding:7px 7px 5px;border-top:2px solid #6ea8fe;background:rgba(110,168,254,.16);border-radius:0 0 8px 8px"><b>100</b></td>
+            <th style="text-align:left;padding:4px 8px;white-space:nowrap">число</th>
+            <td style="padding:4px 7px;text-align:center">9</td>
+            <td colspan="2" style="text-align:center;padding:5px 7px;border:1.6px solid #e6b43c;background:rgba(230,180,60,.16);border-radius:9px;font-weight:700">10</td>
+            <td colspan="2" style="text-align:center;padding:5px 7px;border:1.6px solid #e6b43c;background:rgba(230,180,60,.16);border-radius:9px;font-weight:700">11</td>
+            <td colspan="2" style="text-align:center;padding:5px 7px;border:1.6px solid #e6b43c;background:rgba(230,180,60,.16);border-radius:9px;font-weight:700">12</td>
+            <td style="padding:4px 7px;text-align:center">…</td>
+            <td colspan="3" style="text-align:center;padding:5px 7px;border:1.6px solid #6ea8fe;background:rgba(110,168,254,.18);border-radius:9px;font-weight:700">100</td>
           </tr>
         </table>
         </div>
