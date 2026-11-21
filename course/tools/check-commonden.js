@@ -27,16 +27,24 @@ module.exports = async function checkCommonDen({ evaluate, expect, go, call }) {
     "2(9)": add(sub(q(1,23,24), q(4,625,1000)), q(3,1,12)),
     "2(10)": add(sub(q(3,5,12), q(4,1,6)), q(1,375,1000)),
     "3(1)": sub(add(q(5,5,9), q(3,1,6)), q(6,4,27)),
+    "3(2)": add(sub(q(17,2,3), q(6,1,36)), q(4,3,8)),
+    "3(3)": sub(sub(q(3,9,10), q(1,5,12)), q(1,11,24)),
     "3(4)": sub(q(10,9,16), add(q(3,11,12), q(4,4,9))),
     "3(5)": sub(q(19), add(q(4,1,6), q(11,3,4))),
     "3(6)": sub(sub(q(31), q(14,7,15)), sub(q(27,2,3), q(19,3,4))),
+    "3(7)": sub(sub(q(20), q(7,23,36)), sub(q(14,4,27), q(6,1,18))),
     "3(8)": sub(sub(q(2), sub(q(1,5,10), q(0,2,3))), sub(q(1,2,3), q(0,75,100))),
     "4(2)": sub(add(q(9,3,7), q(2,9,16)), q(5,3,7)),
     "4(3)": sub(q(10,5,14), add(q(3,5,14), q(2,9,34))),
     "5(1)": sub(q(0,8,10), q(0,5,9)), "5(2)": add(q(0,48,100), q(0,3,8)),
     "5(3)": sub(q(9,17,36), q(6,65,100)),
+    "5(4)": sub(q(4,875,1000), q(2,5,23)),
+    "5(5)": sub(add(q(5,11,50), q(0,78,100)), q(2,7,8)),
+    "5(6)": sub(add(q(7,14,25), q(2,14,100)), q(8,4,15)),
     "6(1)": sub(q(7,1,4), add(q(2,5,10), q(2,1,3))),
+    "6(2)": sub(q(5,1,6), add(q(1,7,9), q(1,5,10))),
     "6(3)": sub(q(5,1,3), add(q(2,2,15), q(0,1,2))),
+    "6(4)": sub(q(6,5,8), sub(q(5,3,4), q(4,7,32))),
     "7": sub(q(1), add(add(q(0,5,24), q(0,5,16)), q(0,11,48))),
     "8": sub(add(q(32,5,10), q(30,1,6)), q(28,1,3)),
     "9": add(q(0,1,15), q(0,1,12)),
@@ -48,7 +56,7 @@ module.exports = async function checkCommonDen({ evaluate, expect, go, call }) {
     const actual = read(text), wanted = expected[b.num];
     return actual[0] * wanted[1] !== wanted[0] * actual[1];
   })).map(b => b.num);
-  expect("l09: усі 33 відповіді незалежно пораховано з умов фото", problems.length === 33 && bad.length === 0, bad.join(", "));
+  expect("l09: усі 41 відповіді незалежно пораховано з умов фото; №4(1) — розібраний зразок", problems.length === 41 && bad.length === 0, bad.join(", "));
   expect("l09: рівно дев'ять обов'язкових домашніх", JSON.stringify(problems.filter(b => b.homework === true).map(b => b.num)) ===
     JSON.stringify(["1(2)", "1(4)", "1(6)", "1(8)", "2(2)", "2(4)", "2(6)", "2(8)", "2(10)"]));
   expect("l09: усі ID унікальні, останній блок — summary", new Set(lesson.blocks.filter(b => b.id).map(b => b.id)).size === lesson.blocks.filter(b => b.id).length && lesson.blocks.at(-1).type === "summary");

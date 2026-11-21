@@ -191,6 +191,7 @@ parts: [
 | `fraction` | закляття скорочення: дріб клітинками, `÷k` лише на спільний дільник, `×k` | `num`, `den`, `goal` (`"play"` — пісочниця, інакше до нескоротного), `intro`, `html`, `title`, `id` |
 | `euclid` | прямокутник `a × b`, відрізання квадратів, таблиця ділень, відповідь — сторона останнього квадрата (НСД) | `a`, `b`, `controls`, `intro`, `html`, `title`, `id` |
 | `commonden` | НСК, зведення дробів, додавання/віднімання смужками | `mode: "lcm" / "bring" / "addsub"`, `d1`, `d2`, `n1`, `n2`, `w1`, `w2`, `op: "add" / "sub"`, `goal: "play"` для пісочниці, `intro`, `title`, `id` |
+| `fractionquest` | необов'язкове тренування міркування з One Piece: дві задачі, підказки, пояснення, викреслювання пар | `hero`, `cases: [{title, scene, steps}]`; крок: `ask`, `hint`, `explain` та `choices/answer/wrong`, `accept/wrong` або `terms` (знакові знаменники одиничних дробів); завершення лише після всіх кроків обох задач |
 | `homework` | список заданого, зі стрибком до задачі | `items: [{num, title, note}]`, `html`, `title` |
 | `problem` | задача | `num`, `title`, `question`, `hints`, `hint`, `solution`, `sim`, `jugs`, `map`, `pairs`, `stairs`, `piles` або `answer`, `homework` |
 | `quiz` | одна правильна відповідь | `question`, `options`, `answer`, `explain`, `wrong` |

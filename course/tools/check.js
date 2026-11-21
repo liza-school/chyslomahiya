@@ -898,6 +898,7 @@ const LESSONS = ["l01", "l02", "l03", "l04", "l05", "l06", "l07", "l08", "l09"];
   await require("./check-gauss.js")({ evaluate, expect, go, call });
   await require("./check-fractions.js")({ evaluate, expect, go });
   await require("./check-commonden.js")({ evaluate, expect, go, call });
+  await require("./check-fractionquest.js")({ evaluate, expect, go, call });
   await require("./check-parts.js")({ evaluate, expect, go, call });
 
   /* ---------- телефон і планшет ---------- */

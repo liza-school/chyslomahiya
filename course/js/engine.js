@@ -119,6 +119,7 @@ const COURSE = (function () {
     crossout: "викреслюй",
     digitpos: "N-те місце",
     commonden: "спільний знаменник",
+    fractionquest: "експедиція з дробами",
     homework: "домашнє",
   };
 
@@ -389,6 +390,7 @@ const COURSE = (function () {
     crossout: (b, ctx) => gaussBlock(b, ctx, DIGITS.crossout, "Викресли зайве"),
     digitpos: (b, ctx) => gaussBlock(b, ctx, DIGITS.digitpos, "Цифра на N-му місці"),
     commonden: (b, ctx) => gaussBlock(b, ctx, COMMONDEN.strips, "Спільна мірка"),
+    fractionquest: (b, ctx) => gaussBlock(b, ctx, FRACTIONQUEST.train, "Експедиція з дробами"),
 
     /* Скриньки факторіала: картинка з кнопками, нічого не зараховує. */
     matryoshka: (b) =>
@@ -636,7 +638,7 @@ const COURSE = (function () {
 
   /* ---------- прогрес ---------- */
 
-  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain", "divcheck", "starfill", "digitcycle", "divsort", "floors", "pages", "arrange", "crossout", "digitpos", "commonden"]);
+  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain", "divcheck", "starfill", "digitcycle", "divsort", "floors", "pages", "arrange", "crossout", "digitpos", "commonden", "fractionquest"]);
 
   function blockKey(lesson, block, index) {
     return lesson.id + ":" + (block.id || block.type + index);

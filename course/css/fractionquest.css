@@ -1,0 +1,29 @@
+.fractionquest .fq-tabs, .fractionquest .fq-terms { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.fractionquest [aria-pressed="true"] { background: #f0cb7b; color: #241b13; border-color: #f0cb7b; }
+.fractionquest .fq-guide { display: flex; align-items: center; gap: 16px; margin: 18px 0; }
+.fractionquest .fq-guide > div:last-child { min-width: 0; }
+.fractionquest .fq-heading { color: var(--gold-hi); margin: 0 0 8px; font-size: 21px; }
+.fractionquest .fq-guide p { margin: 0; }
+.fractionquest .fq-portrait { width: 112px; height: 112px; flex: 0 0 112px; border-radius: 18px; border: 2px solid var(--gold); background-image: url('../img/l09-one-piece-crew.png'); background-size: 200% 200%; }
+.fractionquest .fq-nami { background-position: 0 0; }
+.fractionquest .fq-robin { background-position: 100% 0; }
+.fractionquest .fq-franky { background-position: 0 100%; }
+.fractionquest .fq-usopp { background-position: 100% 100%; }
+.fractionquest .fq-question { font-size: 18px; overflow-wrap: anywhere; }
+.fractionquest .fq-controls { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin: 12px 0; }
+.fractionquest .fq-controls .answer-input { width: 100%; max-width: 250px; box-sizing: border-box; }
+.fractionquest .option { width: 100%; text-align: left; white-space: normal; background: #f3e7cf; color: #2b2118; }
+.fractionquest .option:hover { background: #fff1d2; }
+.fractionquest .option:disabled { background: #e7d7b8; color: #2b2118; opacity: 1; cursor: default; }
+.fractionquest .fq-term { min-width: 64px; min-height: 44px; }
+.fractionquest .fq-cancelled { text-decoration: line-through; opacity: .55; }
+.fractionquest .fq-hint, .fractionquest .fq-explanation { margin: 12px 0; padding: 10px; border-left: 2px solid var(--gold); }
+.fractionquest summary { cursor: pointer; min-height: 30px; }
+.fractionquest [hidden] { display: none; }
+.fractionquest > .ghost-btn { margin-top: 16px; }
+@media (max-width: 420px) {
+  .fractionquest .fq-guide { align-items: flex-start; gap: 10px; }
+  .fractionquest .fq-portrait { width: 76px; height: 76px; flex-basis: 76px; border-radius: 12px; }
+  .fractionquest .fq-heading { font-size: 18px; }
+  .fractionquest .fq-tabs > button { width: 100%; }
+}
