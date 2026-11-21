@@ -118,6 +118,7 @@ const COURSE = (function () {
     arrange: "множення",
     crossout: "викреслюй",
     digitpos: "N-те місце",
+    commonden: "спільний знаменник",
     homework: "домашнє",
   };
 
@@ -387,6 +388,7 @@ const COURSE = (function () {
     arrange: (b, ctx) => gaussBlock(b, ctx, DIGITS.arrange, "Скільки чисел можна скласти"),
     crossout: (b, ctx) => gaussBlock(b, ctx, DIGITS.crossout, "Викресли зайве"),
     digitpos: (b, ctx) => gaussBlock(b, ctx, DIGITS.digitpos, "Цифра на N-му місці"),
+    commonden: (b, ctx) => gaussBlock(b, ctx, COMMONDEN.strips, "Спільна мірка"),
 
     /* Скриньки факторіала: картинка з кнопками, нічого не зараховує. */
     matryoshka: (b) =>
@@ -634,7 +636,7 @@ const COURSE = (function () {
 
   /* ---------- прогрес ---------- */
 
-  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain", "divcheck", "starfill", "digitcycle", "divsort", "floors", "pages", "arrange", "crossout", "digitpos"]);
+  const CHECKABLE = new Set(["quiz", "multi", "order", "input", "problem", "scales", "trainer", "jugs", "jugtrainer", "jugmap", "pairs", "stairs", "piles", "fraction", "euclid", "euclidtrain", "scaletrain", "divcheck", "starfill", "digitcycle", "divsort", "floors", "pages", "arrange", "crossout", "digitpos", "commonden"]);
 
   function blockKey(lesson, block, index) {
     return lesson.id + ":" + (block.id || block.type + index);
@@ -647,6 +649,8 @@ const COURSE = (function () {
     for (let index = start; index < end; index++) {
       const block = lesson.blocks[index];
       if (!CHECKABLE.has(block.type)) continue;
+      // Ці пісочниці не викликають onDone й не повинні блокувати повний прогрес.
+      if (block.type === "commonden" && block.goal === "play") continue;
       total += 1;
       if (isDone(blockKey(lesson, block, index))) done += 1;
     }

@@ -1,0 +1,24 @@
+/* Три тренажери використовують спільні .sim, .btn та .mini-input. */
+.commonden .cd-controls, .commonden .cd-work { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin: 12px 0; }
+.commonden .cd-field { display: flex; flex-direction: column; gap: 5px; font-size: 14px; max-width: 100%; }
+.commonden .mini-input { width: 92px; max-width: 100%; }
+.commonden .cd-select { max-width: 100%; padding: 10px; background: #211d30; color: #fff1d2; border: 1px solid var(--gold); border-radius: 8px; font: inherit; }
+.commonden .cd-multiples { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 12px; }
+.commonden .cd-multiple { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
+.commonden .cd-multiple.common { background: var(--gold-hi); color: #251a08; border-color: var(--gold-hi); }
+.commonden .cd-label { font-size: 14px; margin: 8px 0 4px; overflow-wrap: anywhere; }
+.commonden .cd-bar { display: grid; width: 100%; height: 28px; border: 1px solid #c5bba9; margin: 4px 0; background: #282639; }
+.commonden .cd-cell { min-width: 0; border-right: 1px solid #635b55; }
+.commonden .cd-cell:last-child { border-right: 0; }
+.commonden .cd-cell.filled { background: #efc974; }
+.commonden .cd-cell.second { background: #97c3ed; }
+.commonden .cd-cell.removed { background: repeating-linear-gradient(135deg, #efc974 0 3px, #743e39 3px 6px); }
+.commonden .cd-equation { font-weight: bold; color: var(--gold-hi); overflow-wrap: anywhere; }
+.commonden .cd-borrow { border-left: 3px solid var(--gold-hi); padding-left: 10px; }
+.commonden .cd-whole .cd-cell { border-right: 0; }
+.commonden .cd-unpacked { outline: 2px solid #fff1d2; outline-offset: 1px; }
+.commonden .cd-unpacked .cd-cell { animation: cd-unpack .7s ease-out; }
+.commonden .cd-reset { margin-top: 12px; }
+@keyframes cd-unpack { from { transform: translateY(-12px) scaleY(.3); opacity: .3; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .commonden .cd-unpacked .cd-cell { animation: none; } }
+@media (max-width: 420px) { .commonden .cd-work { gap: 10px; } .commonden .cd-field { flex: 1 1 90px; } }

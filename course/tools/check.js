@@ -85,7 +85,7 @@ function connect(url) {
   return { send, open, events };
 }
 
-const LESSONS = ["l01", "l02", "l03", "l04", "l05", "l06", "l07", "l08"];
+const LESSONS = ["l01", "l02", "l03", "l04", "l05", "l06", "l07", "l08", "l09"];
 
 (async () => {
   const cdp = connect(await browserWs());
@@ -897,6 +897,7 @@ const LESSONS = ["l01", "l02", "l03", "l04", "l05", "l06", "l07", "l08"];
   await require("./check-teaching.js")({ evaluate, expect, go });
   await require("./check-gauss.js")({ evaluate, expect, go, call });
   await require("./check-fractions.js")({ evaluate, expect, go });
+  await require("./check-commonden.js")({ evaluate, expect, go, call });
   await require("./check-parts.js")({ evaluate, expect, go, call });
 
   /* ---------- телефон і планшет ---------- */
@@ -981,8 +982,10 @@ const LESSONS = ["l01", "l02", "l03", "l04", "l05", "l06", "l07", "l08"];
   await call("Emulation.clearDeviceMetricsOverride");
 
   const errors = cdp.events
-    .filter((event) => event.method === "Log.entryAdded" && event.params.entry.level === "error")
-    .map((event) => event.params.entry.text);
+    .filter((event) => (event.method === "Log.entryAdded" && event.params.entry.level === "error") ||
+      event.method === "Runtime.exceptionThrown" ||
+      (event.method === "Runtime.consoleAPICalled" && event.params.type === "error"))
+    .map((event) => event.params.entry?.text || JSON.stringify(event.params));
   expect("у консолі немає помилок", errors.length === 0, errors.join(" | "));
 
   chrome.kill();
